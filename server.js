@@ -24,7 +24,6 @@ const tasksFile = path.join(__dirname, "database", "tasks.json");
 const optionsFile = path.join(__dirname, "database", "options.json");
 const systemSettingsFile = path.join(__dirname, "database", "systemSettings.json");
 
-
 // =========================
 // HELPERS
 // =========================
@@ -399,15 +398,32 @@ app.delete("/tasks/:id", authenticateToken, authorize(["Admin"]), (req, res) => 
   res.json({ message: "Task deleted" });
 });
 
-// =========================
-// OPTIONS CRUD
-// =========================
+// =======================================================
+// OPTIONS CRUD (NOW SUPPORTS: priority + status + companies)
+// =======================================================
 app.get("/options", authenticateToken, (req, res) => {
-  res.json(readJSON(optionsFile));
+  let options = readJSON(optionsFile);
+
+  // إذا لم يكن ملفك يحتوي على companies → نضيفها تلقائياً
+  if (!options.companies) {
+    options.companies = [];
+    writeJSON(optionsFile, options);
+  }
+
+  res.json(options);
 });
 
 app.put("/options", authenticateToken, authorize(["Admin"]), (req, res) => {
-  writeJSON(optionsFile, req.body);
+  const { priority, status, companies } = req.body;
+
+  const updated = {
+    priority: priority || [],
+    status: status || [],
+    companies: companies || [],
+  };
+
+  writeJSON(optionsFile, updated);
+
   res.json({ message: "Options updated successfully" });
 });
 
