@@ -1,0 +1,29 @@
+[
+  {
+    "id": 1,
+    "name": "Super Admin",
+    "email": "admin@mail.com",
+    "password": "$2b$10$A6.c7.G0oTbym1AMCljghOT4S5kLStBrZj4fvVGRszrzt1VRXAiQe",
+    "role": "Admin",
+    "dept": "Management",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MSwiaWF0IjoxNzY1Mzg0NTQzLCJleHAiOjE3NjU5ODkzNDN9.fpFrHELpMCfzQmgXsUcdjeo848JvJjGD7ar6Lz9UuuM"
+  },
+  {
+    "id": 2,
+    "name": "Main Admin",
+    "email": "admin@gmail.com",
+    "password": "$2b$10$Nc0I33tfGkTj35cbf1r2VuLaKnNtb3XemIn9KVsY1r75JZIoqOutS",
+    "role": "Manager",
+    "dept": "Management"
+  },
+  {
+    "id": 1765335179046,
+    "name": "ali",
+    "email": "ali@mail.com",
+    "password": "$2b$10$gA3h2cqtzWeO3MyFyg2XN.8nMSuia7lBTb2/vuQmNDoNztgTC9/6m",
+    "role": "Employee",
+    "dept": "Design",
+    "createdAt": "2025-12-10T02:52:59.046Z",
+    "refreshToken": null
+  }
+]

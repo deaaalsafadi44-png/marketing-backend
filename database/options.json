@@ -1,0 +1,16 @@
+{
+  "priority": [
+    "Low",
+    "Medium",
+    "High",
+    "Critical",
+    "sss"
+  ],
+  "status": [
+    "New",
+    "In Progress",
+    "Accebted",
+    "Under review",
+    "Approved"
+  ]
+}
