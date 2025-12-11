@@ -64,13 +64,13 @@ function generateRefreshToken(user) {
   });
 }
 
-// =====================================
-// TEMP ADMIN CREATION ROUTE (use once)
-// =====================================
+// ================================
+// CREATE ADMIN (ONLY IF NOT EXIST)
+// ================================
 app.get("/create-admin", async (req, res) => {
   const users = readJSON(usersFile);
 
-  if (users.find((u) => u.email === "admin@mail.com")) {
+  if (users.some((u) => u.email === "admin@mail.com")) {
     return res.json({ message: "Admin already exists" });
   }
 
@@ -92,11 +92,35 @@ app.get("/create-admin", async (req, res) => {
 
   res.json({
     message: "Admin created successfully",
-    admin: {
-      email: admin.email,
-      password: "123456", // فقط للعرض
-    },
+    admin: { email: admin.email, password: "123456" },
   });
+});
+
+// ================================
+// FORCE RESET ADMIN (ALWAYS WORKS)
+// ================================
+app.get("/reset-admin", async (req, res) => {
+  const users = readJSON(usersFile);
+
+  const hashed = await bcrypt.hash("admin123", 10);
+
+  const newAdmin = {
+    id: 1,
+    name: "Super Admin",
+    email: "admin@mail.com",
+    password: hashed,
+    role: "Admin",
+    dept: "Management",
+    createdAt: new Date().toISOString(),
+    refreshToken: null,
+  };
+
+  const updatedUsers = users.filter((u) => u.id !== 1);
+  updatedUsers.push(newAdmin);
+
+  writeJSON(usersFile, updatedUsers);
+
+  res.json({ message: "Admin reset successfully", user: newAdmin });
 });
 
 // =========================
@@ -402,16 +426,13 @@ app.put("/tasks/:id/time", authenticateToken, (req, res) => {
 });
 
 // =========================
-// SYSTEM SETTINGS API  (NEW)
+// SYSTEM SETTINGS API
 // =========================
-
-// GET SETTINGS
 app.get("/settings", authenticateToken, authorize(["Admin"]), (req, res) => {
   const settings = readJSON(systemSettingsFile);
   res.json(settings);
 });
 
-// UPDATE SETTINGS (Admin only)
 app.put("/settings", authenticateToken, authorize(["Admin"]), (req, res) => {
   writeJSON(systemSettingsFile, req.body);
   res.json({ message: "Settings updated successfully" });
