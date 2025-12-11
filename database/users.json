@@ -14,7 +14,8 @@
     "email": "admin@gmail.com",
     "password": "$2b$10$Nc0I33tfGkTj35cbf1r2VuLaKnNtb3XemIn9KVsY1r75JZIoqOutS",
     "role": "Manager",
-    "dept": "Management"
+    "dept": "Management",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MiwiaWF0IjoxNzY1NDU4ODQ5LCJleHAiOjE3NjYwNjM2NDl9.nYfgrsNvnxIo_sRAFDgbHoLNuaegBQeVuRf8yYPagRY"
   },
   {
     "id": 1765335179046,
@@ -24,6 +25,6 @@
     "role": "Employee",
     "dept": "Design",
     "createdAt": "2025-12-10T02:52:59.046Z",
-    "refreshToken": null
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTc2NTMzNTE3OTA0NiwiaWF0IjoxNzY1NDU3MDM4LCJleHAiOjE3NjYwNjE4Mzh9.AljioHIFZiRCehS7a02Qd_j5kAL8CGOGPFAQGQYI51A"
   }
 ]

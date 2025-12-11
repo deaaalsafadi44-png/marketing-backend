@@ -10,12 +10,20 @@ app.use(cors());
 app.use(express.json());
 
 // =========================
+// ROOT ROUTE (IMPORTANT FOR RENDER)
+// =========================
+app.get("/", (req, res) => {
+  res.send("Backend is running ✔");
+});
+
+// =========================
 // FILE PATHS
 // =========================
 const usersFile = path.join(__dirname, "database", "users.json");
 const tasksFile = path.join(__dirname, "database", "tasks.json");
 const optionsFile = path.join(__dirname, "database", "options.json");
 const systemSettingsFile = path.join(__dirname, "database", "systemSettings.json");
+
 
 // =========================
 // HELPERS
