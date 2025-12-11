@@ -64,6 +64,41 @@ function generateRefreshToken(user) {
   });
 }
 
+// =====================================
+// TEMP ADMIN CREATION ROUTE (use once)
+// =====================================
+app.get("/create-admin", async (req, res) => {
+  const users = readJSON(usersFile);
+
+  if (users.find((u) => u.email === "admin@mail.com")) {
+    return res.json({ message: "Admin already exists" });
+  }
+
+  const hashed = await bcrypt.hash("123456", 10);
+
+  const admin = {
+    id: Date.now(),
+    name: "Admin",
+    email: "admin@mail.com",
+    password: hashed,
+    role: "Admin",
+    dept: "Management",
+    createdAt: new Date().toISOString(),
+    refreshToken: null,
+  };
+
+  users.push(admin);
+  writeJSON(usersFile, users);
+
+  res.json({
+    message: "Admin created successfully",
+    admin: {
+      email: admin.email,
+      password: "123456", // فقط للعرض
+    },
+  });
+});
+
 // =========================
 // LOGIN
 // =========================
@@ -112,7 +147,7 @@ app.post("/refresh", (req, res) => {
   if (!user)
     return res.status(401).json({ message: "Invalid refresh token" });
 
-  jwt.verify(refreshToken, REFRESH_SECRET, (err, decoded) => {
+  jwt.verify(refreshToken, REFRESH_SECRET, (err) => {
     if (err) return res.status(403).json({ message: "Expired refresh token" });
 
     const newAccessToken = generateAccessToken(user);
@@ -141,7 +176,7 @@ app.post("/logout", (req, res) => {
 });
 
 // =========================
-// AUTH
+// AUTH MIDDLEWARE
 // =========================
 function authenticateToken(req, res, next) {
   const header = req.headers["authorization"];
@@ -385,6 +420,5 @@ app.put("/settings", authenticateToken, authorize(["Admin"]), (req, res) => {
 // =========================
 // START SERVER
 // =========================
-app.listen(5000, () =>
-  console.log("🚀 JWT + Refresh Token Server running on http://localhost:5000")
-);
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
