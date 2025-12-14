@@ -1,157 +1,169 @@
+require("dotenv").config();
+
 const express = require("express");
 const cors = require("cors");
-const fs = require("fs");
-const path = require("path");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
+const mongoose = require("mongoose");
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: [
+    "http://localhost:5173",
+    "https://marketing-frontend.onrender.com"
+  ],
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
+
+app.options("*", cors());
+
 app.use(express.json());
 
 // =========================
-// ROOT ROUTE (IMPORTANT FOR RENDER)
+// SAFETY
+// =========================
+process.on("unhandledRejection", (reason) => {
+  console.error("Unhandled Rejection:", reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("Uncaught Exception:", err);
+});
+
+// =========================
+// ROOT
 // =========================
 app.get("/", (req, res) => {
   res.send("Backend is running ✔");
 });
 
 // =========================
-// FILE PATHS
+// SCHEMAS
 // =========================
-const usersFile = path.join(__dirname, "database", "users.json");
-const tasksFile = path.join(__dirname, "database", "tasks.json");
-const optionsFile = path.join(__dirname, "database", "options.json");
-const systemSettingsFile = path.join(__dirname, "database", "systemSettings.json");
+const UserSchema = new mongoose.Schema({
+  id: { type: Number, unique: true, index: true },
+  name: String,
+  email: String,
+  password: String,
+  role: String,
+  dept: String,
+  createdAt: String,
+  refreshToken: String,
+}, { versionKey: false });
+
+const TaskSchema = new mongoose.Schema({
+  id: { type: Number, unique: true, index: true },
+  title: String,
+  description: String,
+  priority: String,
+  status: String,
+  company: String,
+  workerId: Number,
+  workerName: String,
+  timeSpent: Number,
+  createdAt: String,
+}, { versionKey: false });
+
+const OptionsSchema = new mongoose.Schema({
+  priority: Array,
+  status: Array,
+  companies: Array,
+}, { versionKey: false });
+
+const SettingsSchema = new mongoose.Schema({}, {
+  strict: false,
+  versionKey: false
+});
+
+const User = mongoose.model("User", UserSchema);
+const Task = mongoose.model("Task", TaskSchema);
+const Options = mongoose.model("Options", OptionsSchema);
+const SystemSettings = mongoose.model("SystemSettings", SettingsSchema);
 
 // =========================
-// HELPERS
-// =========================
-const readJSON = (file) => {
-  try {
-    return JSON.parse(fs.readFileSync(file, "utf8"));
-  } catch {
-    return [];
-  }
-};
-
-const writeJSON = (file, data) => {
-  fs.writeFileSync(file, JSON.stringify(data, null, 2));
-};
-
-// =========================
-// JWT CONFIG
+// JWT
 // =========================
 const ACCESS_SECRET = "ACCESS_SECRET_KEY_123";
 const REFRESH_SECRET = "REFRESH_SECRET_KEY_456";
 
-const ACCESS_EXPIRE = "15m";
-const REFRESH_EXPIRE = "7d";
+const generateAccessToken = (user) =>
+  jwt.sign({
+    id: user.id,
+    role: user.role,
+    name: user.name,
+    email: user.email,
+    dept: user.dept,
+  }, ACCESS_SECRET, { expiresIn: "15m" });
+
+const generateRefreshToken = (user) =>
+  jwt.sign({ id: user.id }, REFRESH_SECRET, { expiresIn: "7d" });
 
 // =========================
-// GENERATE TOKENS
+// AUTH MIDDLEWARE
 // =========================
-function generateAccessToken(user) {
-  return jwt.sign(
-    {
-      id: user.id,
-      role: user.role,
-      name: user.name,
-      email: user.email,
-      dept: user.dept,
-    },
-    ACCESS_SECRET,
-    { expiresIn: ACCESS_EXPIRE }
-  );
-}
+function authenticateToken(req, res, next) {
+  const header = req.headers.authorization;
+  if (!header) return res.status(401).json({ message: "Missing token" });
 
-function generateRefreshToken(user) {
-  return jwt.sign({ id: user.id }, REFRESH_SECRET, {
-    expiresIn: REFRESH_EXPIRE,
+  const token = header.split(" ")[1];
+  jwt.verify(token, ACCESS_SECRET, (err, user) => {
+    if (err) return res.status(401).json({ message: "Expired token" });
+    req.user = user;
+    next();
   });
 }
 
-// ================================
-// CREATE ADMIN (ONLY IF NOT EXIST)
-// ================================
-app.get("/create-admin", async (req, res) => {
-  const users = readJSON(usersFile);
+const authorize = (roles = []) => (req, res, next) => {
+  if (roles.length && !roles.includes(req.user.role)) {
+    return res.status(403).json({ message: "Forbidden" });
+  }
+  next();
+};
 
-  if (users.some((u) => u.email === "admin@mail.com")) {
-    return res.json({ message: "Admin already exists" });
+// =========================
+// BOOTSTRAP ADMIN (ONCE)
+// =========================
+const createAdminIfNotExists = async () => {
+  const admin = await User.findOne({ role: "Admin" });
+  if (admin) {
+    console.log("👤 Admin already exists");
+    return;
   }
 
-  const hashed = await bcrypt.hash("123456", 10);
+  const id = Math.floor(Date.now() / 1000);
 
-  const admin = {
-    id: Date.now(),
+  await User.create({
+    id,
     name: "Admin",
     email: "admin@mail.com",
-    password: hashed,
+    password: await bcrypt.hash("123456", 10),
     role: "Admin",
     dept: "Management",
     createdAt: new Date().toISOString(),
     refreshToken: null,
-  };
-
-  users.push(admin);
-  writeJSON(usersFile, users);
-
-  res.json({
-    message: "Admin created successfully",
-    admin: { email: admin.email, password: "123456" },
   });
-});
 
-// ================================
-// FORCE RESET ADMIN (ALWAYS WORKS)
-// ================================
-app.get("/reset-admin", async (req, res) => {
-  const users = readJSON(usersFile);
-
-  const hashed = await bcrypt.hash("admin123", 10);
-
-  const newAdmin = {
-    id: 1,
-    name: "Super Admin",
-    email: "admin@mail.com",
-    password: hashed,
-    role: "Admin",
-    dept: "Management",
-    createdAt: new Date().toISOString(),
-    refreshToken: null,
-  };
-
-  const updatedUsers = users.filter((u) => u.id !== 1);
-  updatedUsers.push(newAdmin);
-
-  writeJSON(usersFile, updatedUsers);
-
-  res.json({ message: "Admin reset successfully", user: newAdmin });
-});
+  console.log("✅ Admin created automatically");
+  console.log("📧 admin@mail.com | 🔑 123456");
+};
 
 // =========================
-// LOGIN
+// LOGIN / REFRESH / LOGOUT
 // =========================
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-
-  const users = readJSON(usersFile);
-  const user = users.find((u) => u.email === email);
-
+  const user = await User.findOne({ email: req.body.email });
   if (!user) return res.status(401).json({ message: "Invalid credentials" });
 
-  const match = await bcrypt.compare(password, user.password);
-  if (!match) return res.status(401).json({ message: "Invalid credentials" });
+  const ok = await bcrypt.compare(req.body.password, user.password);
+  if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
-  const accessToken = generateAccessToken(user);
   const refreshToken = generateRefreshToken(user);
-
   user.refreshToken = refreshToken;
-  writeJSON(usersFile, users);
+  await user.save();
 
   res.json({
-    accessToken,
+    accessToken: generateAccessToken(user),
     refreshToken,
     user: {
       id: user.id,
@@ -159,311 +171,118 @@ app.post("/login", async (req, res) => {
       email: user.email,
       role: user.role,
       dept: user.dept,
-    },
+    }
   });
 });
 
-// =========================
-// REFRESH TOKEN
-// =========================
-app.post("/refresh", (req, res) => {
-  const { refreshToken } = req.body;
+app.post("/refresh", async (req, res) => {
+  const user = await User.findOne({ refreshToken: req.body.refreshToken });
+  if (!user) return res.status(401).json({ message: "Invalid refresh token" });
 
-  if (!refreshToken)
-    return res.status(401).json({ message: "Missing refresh token" });
-
-  const users = readJSON(usersFile);
-  const user = users.find((u) => u.refreshToken === refreshToken);
-
-  if (!user)
-    return res.status(401).json({ message: "Invalid refresh token" });
-
-  jwt.verify(refreshToken, REFRESH_SECRET, (err) => {
+  jwt.verify(req.body.refreshToken, REFRESH_SECRET, (err) => {
     if (err) return res.status(403).json({ message: "Expired refresh token" });
-
-    const newAccessToken = generateAccessToken(user);
-    res.json({ accessToken: newAccessToken });
+    res.json({ accessToken: generateAccessToken(user) });
   });
 });
 
-// =========================
-// LOGOUT
-// =========================
-app.post("/logout", (req, res) => {
-  const { refreshToken } = req.body;
-
-  if (!refreshToken)
-    return res.status(400).json({ message: "Missing refresh token" });
-
-  const users = readJSON(usersFile);
-
-  const updated = users.map((u) =>
-    u.refreshToken === refreshToken ? { ...u, refreshToken: null } : u
-  );
-
-  writeJSON(usersFile, updated);
-
+app.post("/logout", async (req, res) => {
+  await User.updateOne({ refreshToken: req.body.refreshToken }, { refreshToken: null });
   res.json({ message: "Logged out successfully" });
 });
 
 // =========================
-// AUTH MIDDLEWARE
+// USERS (ADMIN ONLY)
 // =========================
-function authenticateToken(req, res, next) {
-  const header = req.headers["authorization"];
-  if (!header) return res.status(401).json({ message: "Missing token" });
-
-  const token = header.split(" ")[1];
-  if (!token) return res.status(401).json({ message: "Invalid token format" });
-
-  jwt.verify(token, ACCESS_SECRET, (err, user) => {
-    if (err) return res.status(401).json({ message: "Expired access token" });
-
-    req.user = user;
-    next();
-  });
-}
-
-function authorize(roles = []) {
-  return (req, res, next) => {
-    if (roles.length > 0 && !roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Forbidden" });
-    }
-    next();
-  };
-}
-
-// =========================
-// USERS CRUD
-// =========================
-app.get("/users", authenticateToken, authorize(["Admin"]), (req, res) => {
-  res.json(readJSON(usersFile));
-});
-
 app.post("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
-  const users = readJSON(usersFile);
-
-  if (users.some((u) => u.email === req.body.email)) {
+  if (await User.findOne({ email: req.body.email })) {
     return res.status(400).json({ message: "Email already exists" });
   }
 
-  const hashedPassword = await bcrypt.hash(req.body.password, 10);
+  const id = Math.floor(Date.now() / 1000);
 
-  const newUser = {
-    id: Date.now(),
+  const user = {
+    id,
     name: req.body.name,
     email: req.body.email,
-    password: hashedPassword,
+    password: await bcrypt.hash(req.body.password, 10),
     role: req.body.role,
-    dept: req.body.dept,
+    dept: req.body.department || req.body.dept || "",
     createdAt: new Date().toISOString(),
     refreshToken: null,
   };
 
-  users.push(newUser);
-  writeJSON(usersFile, users);
-
-  res.json(newUser);
-});
-
-app.get("/users/:id", authenticateToken, authorize(["Admin"]), (req, res) => {
-  const users = readJSON(usersFile);
-  const user = users.find((u) => u.id == req.params.id);
-
-  if (!user) return res.status(404).json({ message: "User not found" });
-
+  await User.create(user);
   res.json(user);
 });
 
-app.put("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
-  const users = readJSON(usersFile);
-  const id = Number(req.params.id);
-
-  let newPassword = null;
-
-  if (req.body.password && req.body.password.trim() !== "") {
-    newPassword = await bcrypt.hash(req.body.password, 10);
-  }
-
-  const updatedUsers = users.map((u) =>
-    u.id === id
-      ? {
-          ...u,
-          name: req.body.name,
-          email: req.body.email,
-          role: req.body.role,
-          dept: req.body.dept,
-          password: newPassword ? newPassword : u.password,
-        }
-      : u
-  );
-
-  writeJSON(usersFile, updatedUsers);
-
-  res.json({ message: "User updated successfully" });
-});
-
-app.delete("/users/:id", authenticateToken, authorize(["Admin"]), (req, res) => {
-  const users = readJSON(usersFile);
-
-  writeJSON(
-    usersFile,
-    users.filter((u) => u.id != req.params.id)
-  );
-
-  res.json({ message: "User deleted" });
+app.get("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  res.json(await User.find({}, { _id: 0 }));
 });
 
 // =========================
-// TASKS CRUD
+// TASKS
 // =========================
-app.get("/tasks", authenticateToken, (req, res) => {
-  const tasks = readJSON(tasksFile);
+app.post("/tasks", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  const worker = await User.findOne({ id: req.body.workerId });
 
-  if (req.user.role === "Employee") {
-    const filtered = tasks.filter((t) => t.workerId == req.user.id);
-    return res.json(filtered);
-  }
-
-  res.json(tasks);
-});
-
-app.get("/tasks/:id", authenticateToken, (req, res) => {
-  const tasks = readJSON(tasksFile);
-  const task = tasks.find((t) => t.id == req.params.id);
-
-  if (!task) return res.status(404).json({ message: "Task not found" });
-
-  res.json(task);
-});
-
-app.post("/tasks", authenticateToken, authorize(["Admin"]), (req, res) => {
-  const tasks = readJSON(tasksFile);
-  const users = readJSON(usersFile);
-
-  const worker = users.find((u) => u.id == req.body.workerId);
-
-  const newTask = {
-    id: Date.now(),
+  const task = {
+    id: Math.floor(Date.now() / 1000),
     ...req.body,
     workerName: worker?.name || "Unknown",
     createdAt: new Date().toISOString(),
   };
 
-  tasks.push(newTask);
-  writeJSON(tasksFile, tasks);
-
-  res.json(newTask);
+  await Task.create(task);
+  res.json(task);
 });
 
-app.put("/tasks/:id", authenticateToken, (req, res) => {
-  const tasks = readJSON(tasksFile);
-  const users = readJSON(usersFile);
-  const id = Number(req.params.id);
-
-  const task = tasks.find((t) => t.id === id);
-  if (!task) return res.status(404).json({ message: "Task not found" });
-
+app.get("/tasks", authenticateToken, async (req, res) => {
   if (req.user.role === "Employee") {
-    if (!req.body.status)
-      return res.status(400).json({ message: "Status is required" });
-
-    task.status = req.body.status;
-    writeJSON(tasksFile, tasks);
-
-    return res.json({ message: "Status updated successfully" });
+    return res.json(await Task.find({ workerId: req.user.id }, { _id: 0 }));
   }
-
-  const worker = users.find((u) => u.id == req.body.workerId);
-
-  const updated = tasks.map((t) =>
-    t.id === id
-      ? { ...t, ...req.body, workerName: worker?.name || t.workerName }
-      : t
-  );
-
-  writeJSON(tasksFile, updated);
-
-  res.json({ message: "Task updated successfully" });
-});
-
-app.delete("/tasks/:id", authenticateToken, authorize(["Admin"]), (req, res) => {
-  const tasks = readJSON(tasksFile);
-
-  writeJSON(
-    tasksFile,
-    tasks.filter((t) => t.id != req.params.id)
-  );
-
-  res.json({ message: "Task deleted" });
-});
-
-// =======================================================
-// OPTIONS CRUD (NOW SUPPORTS: priority + status + companies)
-// =======================================================
-app.get("/options", authenticateToken, (req, res) => {
-  let options = readJSON(optionsFile);
-
-  // إذا لم يكن ملفك يحتوي على companies → نضيفها تلقائياً
-  if (!options.companies) {
-    options.companies = [];
-    writeJSON(optionsFile, options);
-  }
-
-  res.json(options);
-});
-
-app.put("/options", authenticateToken, authorize(["Admin"]), (req, res) => {
-  const { priority, status, companies } = req.body;
-
-  const updated = {
-    priority: priority || [],
-    status: status || [],
-    companies: companies || [],
-  };
-
-  writeJSON(optionsFile, updated);
-
-  res.json({ message: "Options updated successfully" });
+  res.json(await Task.find({}, { _id: 0 }));
 });
 
 // =========================
-// UPDATE TASK TIME
+// OPTIONS
 // =========================
-app.put("/tasks/:id/time", authenticateToken, (req, res) => {
-  const tasks = readJSON(tasksFile);
-  const id = Number(req.params.id);
+app.get("/options", authenticateToken, async (req, res) => {
+  res.json((await Options.findOne({}, { _id: 0 })) || {
+    priority: [],
+    status: [],
+    companies: [],
+  });
+});
 
-  const task = tasks.find((t) => t.id === id);
-  if (!task) return res.status(404).json({ message: "Task not found" });
-
-  const { timeSpent } = req.body;
-  if (timeSpent == null) {
-    return res.status(400).json({ message: "timeSpent is required" });
-  }
-
-  task.timeSpent = (task.timeSpent || 0) + Number(timeSpent);
-
-  writeJSON(tasksFile, tasks);
-
-  res.json({ message: "Time added successfully", timeSpent: task.timeSpent });
+app.put("/options", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  await Options.deleteMany({});
+  await Options.create(req.body);
+  res.json({ message: "Options saved" });
 });
 
 // =========================
-// SYSTEM SETTINGS API
+// SETTINGS
 // =========================
-app.get("/settings", authenticateToken, authorize(["Admin"]), (req, res) => {
-  const settings = readJSON(systemSettingsFile);
-  res.json(settings);
-});
-
-app.put("/settings", authenticateToken, authorize(["Admin"]), (req, res) => {
-  writeJSON(systemSettingsFile, req.body);
-  res.json({ message: "Settings updated successfully" });
+app.get("/settings", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  res.json((await SystemSettings.findOne({}, { _id: 0 })) || {});
 });
 
 // =========================
 // START SERVER
 // =========================
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+mongoose.connect(process.env.MONGO_URI, {
+  dbName: "marketing_task_system",
+  serverSelectionTimeoutMS: 5000,
+})
+.then(async () => {
+  console.log("MongoDB Atlas connected ✔");
+
+  await createAdminIfNotExists();
+
+  app.listen(5000, () =>
+    console.log("Server running on port 5000")
+  );
+})
+.catch(err => {
+  console.error("MongoDB error:", err.message);
+});
