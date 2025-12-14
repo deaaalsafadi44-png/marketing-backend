@@ -18,7 +18,6 @@ app.use(cors({
 }));
 
 app.options("*", cors());
-
 app.use(express.json());
 
 // =========================
@@ -122,7 +121,7 @@ const authorize = (roles = []) => (req, res, next) => {
 };
 
 // =========================
-// BOOTSTRAP ADMIN (ONCE)
+// BOOTSTRAP ADMIN
 // =========================
 const createAdminIfNotExists = async () => {
   const admin = await User.findOne({ role: "Admin" });
@@ -145,11 +144,10 @@ const createAdminIfNotExists = async () => {
   });
 
   console.log("✅ Admin created automatically");
-  console.log("📧 admin@mail.com | 🔑 123456");
 };
 
 // =========================
-// LOGIN / REFRESH / LOGOUT
+// AUTH
 // =========================
 app.post("/login", async (req, res) => {
   const user = await User.findOne({ email: req.body.email });
@@ -191,7 +189,7 @@ app.post("/logout", async (req, res) => {
 });
 
 // =========================
-// USERS (ADMIN ONLY)
+// USERS
 // =========================
 app.post("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
   if (await User.findOne({ email: req.body.email })) {
@@ -219,6 +217,31 @@ app.get("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
   res.json(await User.find({}, { _id: 0 }));
 });
 
+// ✅ GET USER BY ID
+app.get("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  const user = await User.findOne({ id: Number(req.params.id) }, { _id: 0 });
+  if (!user) return res.status(404).json({ message: "User not found" });
+  res.json(user);
+});
+
+// ✅ UPDATE USER
+app.put("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  if (req.body.password) {
+    req.body.password = await bcrypt.hash(req.body.password, 10);
+  } else {
+    delete req.body.password;
+  }
+
+  const updated = await User.findOneAndUpdate(
+    { id: Number(req.params.id) },
+    req.body,
+    { new: true, projection: { _id: 0 } }
+  );
+
+  if (!updated) return res.status(404).json({ message: "User not found" });
+  res.json(updated);
+});
+
 // =========================
 // TASKS
 // =========================
@@ -241,6 +264,35 @@ app.get("/tasks", authenticateToken, async (req, res) => {
     return res.json(await Task.find({ workerId: req.user.id }, { _id: 0 }));
   }
   res.json(await Task.find({}, { _id: 0 }));
+});
+
+// ✅ GET TASK BY ID
+app.get("/tasks/:id", authenticateToken, async (req, res) => {
+  const task = await Task.findOne({ id: Number(req.params.id) }, { _id: 0 });
+  if (!task) return res.status(404).json({ message: "Task not found" });
+  res.json(task);
+});
+
+// ✅ UPDATE TASK
+app.put("/tasks/:id", authenticateToken, async (req, res) => {
+  const updated = await Task.findOneAndUpdate(
+    { id: Number(req.params.id) },
+    req.body,
+    { new: true, projection: { _id: 0 } }
+  );
+  if (!updated) return res.status(404).json({ message: "Task not found" });
+  res.json(updated);
+});
+
+// ✅ SAVE TIME
+app.put("/tasks/:id/time", authenticateToken, async (req, res) => {
+  const updated = await Task.findOneAndUpdate(
+    { id: Number(req.params.id) },
+    { timeSpent: req.body.timeSpent },
+    { new: true, projection: { _id: 0 } }
+  );
+  if (!updated) return res.status(404).json({ message: "Task not found" });
+  res.json(updated);
 });
 
 // =========================
@@ -276,12 +328,8 @@ mongoose.connect(process.env.MONGO_URI, {
 })
 .then(async () => {
   console.log("MongoDB Atlas connected ✔");
-
   await createAdminIfNotExists();
-
-  app.listen(5000, () =>
-    console.log("Server running on port 5000")
-  );
+  app.listen(5000, () => console.log("Server running on port 5000"));
 })
 .catch(err => {
   console.error("MongoDB error:", err.message);
