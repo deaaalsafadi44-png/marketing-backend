@@ -125,15 +125,10 @@ const authorize = (roles = []) => (req, res, next) => {
 // =========================
 const createAdminIfNotExists = async () => {
   const admin = await User.findOne({ role: "Admin" });
-  if (admin) {
-    console.log("👤 Admin already exists");
-    return;
-  }
-
-  const id = Math.floor(Date.now() / 1000);
+  if (admin) return;
 
   await User.create({
-    id,
+    id: Math.floor(Date.now() / 1000),
     name: "Admin",
     email: "admin@mail.com",
     password: await bcrypt.hash("123456", 10),
@@ -142,8 +137,6 @@ const createAdminIfNotExists = async () => {
     createdAt: new Date().toISOString(),
     refreshToken: null,
   });
-
-  console.log("✅ Admin created automatically");
 };
 
 // =========================
@@ -173,58 +166,15 @@ app.post("/login", async (req, res) => {
   });
 });
 
-app.post("/refresh", async (req, res) => {
-  const user = await User.findOne({ refreshToken: req.body.refreshToken });
-  if (!user) return res.status(401).json({ message: "Invalid refresh token" });
-
-  jwt.verify(req.body.refreshToken, REFRESH_SECRET, (err) => {
-    if (err) return res.status(403).json({ message: "Expired refresh token" });
-    res.json({ accessToken: generateAccessToken(user) });
-  });
-});
-
-app.post("/logout", async (req, res) => {
-  await User.updateOne({ refreshToken: req.body.refreshToken }, { refreshToken: null });
-  res.json({ message: "Logged out successfully" });
-});
-
 // =========================
 // USERS
 // =========================
-app.post("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
-  if (await User.findOne({ email: req.body.email })) {
-    return res.status(400).json({ message: "Email already exists" });
-  }
-
-  const id = Math.floor(Date.now() / 1000);
-
-  const user = {
-    id,
-    name: req.body.name,
-    email: req.body.email,
-    password: await bcrypt.hash(req.body.password, 10),
-    role: req.body.role,
-    dept: req.body.department || req.body.dept || "",
-    createdAt: new Date().toISOString(),
-    refreshToken: null,
-  };
-
-  await User.create(user);
-  res.json(user);
-});
-
-app.get("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
-  res.json(await User.find({}, { _id: 0 }));
-});
-
-// ✅ GET USER BY ID
 app.get("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
   const user = await User.findOne({ id: Number(req.params.id) }, { _id: 0 });
   if (!user) return res.status(404).json({ message: "User not found" });
   res.json(user);
 });
 
-// ✅ UPDATE USER
 app.put("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
   if (req.body.password) {
     req.body.password = await bcrypt.hash(req.body.password, 10);
@@ -293,6 +243,13 @@ app.put("/tasks/:id/time", authenticateToken, async (req, res) => {
   );
   if (!updated) return res.status(404).json({ message: "Task not found" });
   res.json(updated);
+});
+
+// ✅ DELETE TASK (الإصلاح الناقص)
+app.delete("/tasks/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  const deleted = await Task.findOneAndDelete({ id: Number(req.params.id) });
+  if (!deleted) return res.status(404).json({ message: "Task not found" });
+  res.json({ message: "Task deleted successfully" });
 });
 
 // =========================
