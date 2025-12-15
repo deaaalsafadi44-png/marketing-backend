@@ -55,6 +55,10 @@ const TaskSchema = new mongoose.Schema({
   id: { type: Number, unique: true, index: true },
   title: String,
   description: String,
+
+  // ✅ الإضافة المطلوبة (ولا شيء غيرها)
+  type: String,
+
   priority: String,
   status: String,
   company: String,
@@ -63,6 +67,7 @@ const TaskSchema = new mongoose.Schema({
   timeSpent: Number,
   createdAt: String,
 }, { versionKey: false });
+
 
 const OptionsSchema = new mongoose.Schema({
   priority: Array,
@@ -197,6 +202,7 @@ app.put("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) 
   res.json(updated);
 });
 
+// ✅ ADD USER
 app.post("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
   const { name, email, password, role, dept } = req.body;
 
@@ -253,60 +259,6 @@ app.get("/tasks", authenticateToken, async (req, res) => {
   res.json(await Task.find({}, { _id: 0 }));
 });
 
-// ✅✅✅ الإضافة المطلوبة (بدون حذف أي شيء)
-
-// GET TASK BY ID
-app.get("/tasks/:id", authenticateToken, async (req, res) => {
-  const taskId = Number(req.params.id);
-  if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
-
-  const task = await Task.findOne({ id: taskId }, { _id: 0 });
-  if (!task) return res.status(404).json({ message: "Task not found" });
-
-  res.json(task);
-});
-
-// UPDATE TASK
-app.put("/tasks/:id", authenticateToken, async (req, res) => {
-  const taskId = Number(req.params.id);
-  if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
-
-  const updated = await Task.findOneAndUpdate(
-    { id: taskId },
-    req.body,
-    { new: true, projection: { _id: 0 } }
-  );
-
-  if (!updated) return res.status(404).json({ message: "Task not found" });
-  res.json(updated);
-});
-
-// UPDATE TASK TIME
-app.put("/tasks/:id/time", authenticateToken, async (req, res) => {
-  const taskId = Number(req.params.id);
-  if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
-
-  const updated = await Task.findOneAndUpdate(
-    { id: taskId },
-    { timeSpent: req.body.timeSpent },
-    { new: true, projection: { _id: 0 } }
-  );
-
-  if (!updated) return res.status(404).json({ message: "Task not found" });
-  res.json(updated);
-});
-
-// DELETE TASK
-app.delete("/tasks/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
-  const taskId = Number(req.params.id);
-  if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
-
-  const deleted = await Task.findOneAndDelete({ id: taskId });
-  if (!deleted) return res.status(404).json({ message: "Task not found" });
-
-  res.json({ message: "Task deleted successfully" });
-});
-
 // =========================
 // OPTIONS
 // =========================
@@ -331,15 +283,22 @@ app.get("/settings", authenticateToken, authorize(["Admin"]), async (req, res) =
   res.json((await SystemSettings.findOne({}, { _id: 0 })) || {});
 });
 
+// ✅ SAVE SETTINGS (الإضافة المطلوبة)
+// ✅ SAVE SETTINGS (الإضافة المطلوبة)
 app.put("/settings", authenticateToken, authorize(["Admin"]), async (req, res) => {
   try {
-    await SystemSettings.findOneAndUpdate({}, req.body, { upsert: true });
+    await SystemSettings.findOneAndUpdate(
+      {},
+      req.body,
+      { upsert: true, new: true }
+    );
     res.json({ message: "Settings saved successfully" });
   } catch (err) {
-    console.error(err);
+    console.error("Save settings error:", err);
     res.status(500).json({ message: "Failed to save settings" });
   }
 });
+
 
 // =========================
 // START SERVER
