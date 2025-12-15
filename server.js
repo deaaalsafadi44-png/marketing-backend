@@ -169,6 +169,16 @@ app.post("/login", async (req, res) => {
 // =========================
 // USERS
 // =========================
+
+// ✅ GET ALL USERS (الإضافة المطلوبة)
+app.get("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  const users = await User.find(
+    {},
+    { _id: 0, password: 0, refreshToken: 0 }
+  );
+  res.json(users);
+});
+
 app.get("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
   const user = await User.findOne({ id: Number(req.params.id) }, { _id: 0 });
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -196,7 +206,7 @@ app.put("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) 
 // TASKS
 // =========================
 app.post("/tasks", authenticateToken, authorize(["Admin"]), async (req, res) => {
-  const worker = await User.findOne({ id: req.body.workerId });
+  const worker = await User.findOne({ id: Number(req.body.workerId) });
 
   const task = {
     id: Math.floor(Date.now() / 1000),
@@ -216,14 +226,12 @@ app.get("/tasks", authenticateToken, async (req, res) => {
   res.json(await Task.find({}, { _id: 0 }));
 });
 
-// ✅ GET TASK BY ID
 app.get("/tasks/:id", authenticateToken, async (req, res) => {
   const task = await Task.findOne({ id: Number(req.params.id) }, { _id: 0 });
   if (!task) return res.status(404).json({ message: "Task not found" });
   res.json(task);
 });
 
-// ✅ UPDATE TASK
 app.put("/tasks/:id", authenticateToken, async (req, res) => {
   const updated = await Task.findOneAndUpdate(
     { id: Number(req.params.id) },
@@ -234,7 +242,6 @@ app.put("/tasks/:id", authenticateToken, async (req, res) => {
   res.json(updated);
 });
 
-// ✅ SAVE TIME
 app.put("/tasks/:id/time", authenticateToken, async (req, res) => {
   const updated = await Task.findOneAndUpdate(
     { id: Number(req.params.id) },
@@ -245,7 +252,6 @@ app.put("/tasks/:id/time", authenticateToken, async (req, res) => {
   res.json(updated);
 });
 
-// ✅ DELETE TASK (الإصلاح الناقص)
 app.delete("/tasks/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
   const deleted = await Task.findOneAndDelete({ id: Number(req.params.id) });
   if (!deleted) return res.status(404).json({ message: "Task not found" });
