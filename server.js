@@ -197,6 +197,39 @@ app.put("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) 
   res.json(updated);
 });
 
+// ✅ ADD USER (الإضافة المطلوبة فقط)
+app.post("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  const { name, email, password, role, dept } = req.body;
+
+  if (!name || !email || !password || !role || !dept) {
+    return res.status(400).json({ message: "Missing required fields" });
+  }
+
+  const exists = await User.findOne({ email });
+  if (exists) {
+    return res.status(400).json({ message: "Email already exists" });
+  }
+
+  const newUser = await User.create({
+    id: Math.floor(Date.now() / 1000),
+    name,
+    email,
+    password: await bcrypt.hash(password, 10),
+    role,
+    dept,
+    createdAt: new Date().toISOString(),
+    refreshToken: null,
+  });
+
+  res.status(201).json({
+    id: newUser.id,
+    name: newUser.name,
+    email: newUser.email,
+    role: newUser.role,
+    dept: newUser.dept,
+  });
+});
+
 // =========================
 // TASKS
 // =========================
@@ -219,61 +252,6 @@ app.get("/tasks", authenticateToken, async (req, res) => {
     return res.json(await Task.find({ workerId: req.user.id }, { _id: 0 }));
   }
   res.json(await Task.find({}, { _id: 0 }));
-});
-
-// ✅ GET TASK BY ID (with validation)
-app.get("/tasks/:id", authenticateToken, async (req, res) => {
-  const taskId = Number(req.params.id);
-  if (isNaN(taskId)) {
-    return res.status(400).json({ message: "Invalid task id" });
-  }
-
-  const task = await Task.findOne({ id: taskId }, { _id: 0 });
-  if (!task) return res.status(404).json({ message: "Task not found" });
-  res.json(task);
-});
-
-// ✅ UPDATE TASK (with validation)
-app.put("/tasks/:id", authenticateToken, async (req, res) => {
-  const taskId = Number(req.params.id);
-  if (isNaN(taskId)) {
-    return res.status(400).json({ message: "Invalid task id" });
-  }
-
-  const updated = await Task.findOneAndUpdate(
-    { id: taskId },
-    req.body,
-    { new: true, projection: { _id: 0 } }
-  );
-  if (!updated) return res.status(404).json({ message: "Task not found" });
-  res.json(updated);
-});
-
-app.put("/tasks/:id/time", authenticateToken, async (req, res) => {
-  const taskId = Number(req.params.id);
-  if (isNaN(taskId)) {
-    return res.status(400).json({ message: "Invalid task id" });
-  }
-
-  const updated = await Task.findOneAndUpdate(
-    { id: taskId },
-    { timeSpent: req.body.timeSpent },
-    { new: true, projection: { _id: 0 } }
-  );
-  if (!updated) return res.status(404).json({ message: "Task not found" });
-  res.json(updated);
-});
-
-// ✅ DELETE TASK (with validation)
-app.delete("/tasks/:id", authenticateToken, authorize(["Admin"]), async (req, res) => {
-  const taskId = Number(req.params.id);
-  if (isNaN(taskId)) {
-    return res.status(400).json({ message: "Invalid task id" });
-  }
-
-  const deleted = await Task.findOneAndDelete({ id: taskId });
-  if (!deleted) return res.status(404).json({ message: "Task not found" });
-  res.json({ message: "Task deleted successfully" });
 });
 
 // =========================
