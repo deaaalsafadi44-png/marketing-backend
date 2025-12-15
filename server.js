@@ -55,6 +55,7 @@ const TaskSchema = new mongoose.Schema({
   id: { type: Number, unique: true, index: true },
   title: String,
   description: String,
+  type: String,              // ✅ الحل هنا
   priority: String,
   status: String,
   company: String,
@@ -63,6 +64,7 @@ const TaskSchema = new mongoose.Schema({
   timeSpent: Number,
   createdAt: String,
 }, { versionKey: false });
+
 
 const OptionsSchema = new mongoose.Schema({
   priority: Array,
