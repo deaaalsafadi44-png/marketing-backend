@@ -197,7 +197,7 @@ app.put("/users/:id", authenticateToken, authorize(["Admin"]), async (req, res) 
   res.json(updated);
 });
 
-// ✅ ADD USER (الإضافة المطلوبة فقط)
+// ✅ ADD USER
 app.post("/users", authenticateToken, authorize(["Admin"]), async (req, res) => {
   const { name, email, password, role, dept } = req.body;
 
@@ -276,6 +276,18 @@ app.put("/options", authenticateToken, authorize(["Admin"]), async (req, res) =>
 // =========================
 app.get("/settings", authenticateToken, authorize(["Admin"]), async (req, res) => {
   res.json((await SystemSettings.findOne({}, { _id: 0 })) || {});
+});
+
+// ✅ SAVE SETTINGS (الإضافة المطلوبة)
+app.put("/settings", authenticateToken, authorize(["Admin"]), async (req, res) => {
+  try {
+    await SystemSettings.deleteMany({});
+    await SystemSettings.create(req.body);
+    res.json({ message: "Settings saved successfully" });
+  } catch (err) {
+    console.error("Save settings error:", err);
+    res.status(500).json({ message: "Failed to save settings" });
+  }
 });
 
 // =========================
