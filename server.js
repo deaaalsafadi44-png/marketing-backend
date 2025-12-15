@@ -55,10 +55,7 @@ const TaskSchema = new mongoose.Schema({
   id: { type: Number, unique: true, index: true },
   title: String,
   description: String,
-
-  // ✅ الإضافة المطلوبة (ولا شيء غيرها)
-  type: String,
-
+  type: String,              // ✅ هذا هو الحل
   priority: String,
   status: String,
   company: String,
@@ -67,6 +64,7 @@ const TaskSchema = new mongoose.Schema({
   timeSpent: Number,
   createdAt: String,
 }, { versionKey: false });
+
 
 
 const OptionsSchema = new mongoose.Schema({
