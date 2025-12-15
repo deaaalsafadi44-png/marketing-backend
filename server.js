@@ -279,16 +279,21 @@ app.get("/settings", authenticateToken, authorize(["Admin"]), async (req, res) =
 });
 
 // ✅ SAVE SETTINGS (الإضافة المطلوبة)
+// ✅ SAVE SETTINGS (الإضافة المطلوبة)
 app.put("/settings", authenticateToken, authorize(["Admin"]), async (req, res) => {
   try {
-    await SystemSettings.deleteMany({});
-    await SystemSettings.create(req.body);
+    await SystemSettings.findOneAndUpdate(
+      {},
+      req.body,
+      { upsert: true, new: true }
+    );
     res.json({ message: "Settings saved successfully" });
   } catch (err) {
     console.error("Save settings error:", err);
     res.status(500).json({ message: "Failed to save settings" });
   }
 });
+
 
 // =========================
 // START SERVER
