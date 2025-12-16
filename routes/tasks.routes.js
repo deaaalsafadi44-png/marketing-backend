@@ -7,17 +7,17 @@ const router = express.Router();
 
 /* =========================
    CREATE TASK
-   ========================= */
+========================= */
 router.post(
   "/tasks",
   authenticateToken,
-  authorize(["Admin"]),
+  authorize(["Admin", "Manager"]), // ✅ FIX
   tasksController.createTask
 );
 
 /* =========================
    GET ALL TASKS
-   ========================= */
+========================= */
 router.get(
   "/tasks",
   authenticateToken,
@@ -26,7 +26,7 @@ router.get(
 
 /* =========================
    GET TASK BY ID
-   ========================= */
+========================= */
 router.get(
   "/tasks/:id",
   authenticateToken,
@@ -35,16 +35,17 @@ router.get(
 
 /* =========================
    UPDATE TASK
-   ========================= */
+========================= */
 router.put(
   "/tasks/:id",
   authenticateToken,
+  authorize(["Admin", "Manager"]), // ✅ FIX
   tasksController.updateTask
 );
 
 /* =========================
    SAVE TIME
-   ========================= */
+========================= */
 router.put(
   "/tasks/:id/time",
   authenticateToken,
@@ -53,13 +54,12 @@ router.put(
 
 /* =========================
    DELETE TASK
-   ========================= */
+========================= */
 router.delete(
   "/tasks/:id",
   authenticateToken,
-  authorize(["Admin", "Manager"]),
+  authorize(["Admin", "Manager"]), // ✅ already correct
   tasksController.deleteTask
 );
-
 
 module.exports = router;
