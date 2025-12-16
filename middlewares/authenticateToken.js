@@ -17,9 +17,9 @@ module.exports = function authenticateToken(req, res, next) {
      2️⃣ Fallback: Authorization Header
   ========================= */
   if (!token && req.headers.authorization) {
-    const parts = req.headers.authorization.split(" ");
-    if (parts.length === 2 && parts[0] === "Bearer") {
-      token = parts[1];
+    const authHeader = req.headers.authorization;
+    if (authHeader.startsWith("Bearer ")) {
+      token = authHeader.substring(7);
     }
   }
 
@@ -27,18 +27,23 @@ module.exports = function authenticateToken(req, res, next) {
      3️⃣ No Token
   ========================= */
   if (!token) {
-    return res.status(401).json({ message: "Missing token" });
+    return res.status(401).json({
+      message: "Unauthorized - no access token",
+    });
   }
 
   /* =========================
      4️⃣ Verify Token
   ========================= */
-  jwt.verify(token, ACCESS_SECRET, (err, user) => {
+  jwt.verify(token, ACCESS_SECRET, (err, decoded) => {
     if (err) {
-      return res.status(401).json({ message: "Invalid or expired token" });
+      return res.status(401).json({
+        message: "Unauthorized - token expired or invalid",
+      });
     }
 
-    req.user = user;
+    // 🔐 مهم: نخزن البيانات المفكوكة
+    req.user = decoded;
     next();
   });
 };

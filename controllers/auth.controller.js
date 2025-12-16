@@ -18,23 +18,25 @@ const login = async (req, res) => {
 
     const { accessToken, refreshToken, user } = result;
 
-    // Access Token (قصير)
+    const isProd = process.env.NODE_ENV === "production";
+
+    // 🔐 Access Token
     res.cookie("accessToken", accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 15 * 60 * 1000,
+      secure: isProd,            // ✅ true في الإنتاج
+      sameSite: isProd ? "none" : "lax", // ✅ مهم جدًا للأونلاين
+      maxAge: 15 * 60 * 1000, // 15 min
     });
 
-    // Refresh Token (طويل)
+    // 🔐 Refresh Token
     res.cookie("refreshToken", refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
 
-    // نعيد فقط المستخدم (بدون توكنات)
+    // نعيد فقط المستخدم
     res.json({ user });
   } catch (err) {
     console.error("Login error:", err);
@@ -46,23 +48,25 @@ const login = async (req, res) => {
    REFRESH TOKEN (HttpOnly)
 ========================= */
 const refreshToken = async (req, res) => {
-  const refreshToken = req.cookies?.refreshToken;
+  const token = req.cookies?.refreshToken;
 
-  if (!refreshToken) {
+  if (!token) {
     return res.status(401).json({ message: "Missing refresh token" });
   }
 
   try {
-    const newAccessToken = await authService.refreshToken(refreshToken);
+    const newAccessToken = await authService.refreshToken(token);
 
     if (!newAccessToken) {
       return res.status(401).json({ message: "Invalid refresh token" });
     }
 
+    const isProd = process.env.NODE_ENV === "production";
+
     res.cookie("accessToken", newAccessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
       maxAge: 15 * 60 * 1000,
     });
 
@@ -78,16 +82,18 @@ const refreshToken = async (req, res) => {
 ========================= */
 const logout = async (req, res) => {
   try {
+    const isProd = process.env.NODE_ENV === "production";
+
     res.clearCookie("accessToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
     });
 
     res.clearCookie("refreshToken", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: isProd,
+      sameSite: isProd ? "none" : "lax",
     });
 
     res.json({ message: "Logged out successfully" });
@@ -102,7 +108,6 @@ const logout = async (req, res) => {
 ========================= */
 const getMe = async (req, res) => {
   try {
-    // req.user يأتي من authenticateToken
     res.json({
       user: req.user,
     });
@@ -116,5 +121,5 @@ module.exports = {
   login,
   refreshToken,
   logout,
-  getMe, // ✅ NEW
+  getMe,
 };

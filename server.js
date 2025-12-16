@@ -3,7 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
-const cookieParser = require("cookie-parser"); // ✅ NEW
+const cookieParser = require("cookie-parser");
 
 // Routes
 const authRoutes = require("./routes/auth.routes");
@@ -16,27 +16,45 @@ const reportsRoutes = require("./routes/reports.routes");
 const app = express();
 
 /* =========================
-   CORS
+   🛡 TRUST PROXY (Render)
 ========================= */
+app.set("trust proxy", 1); // ✅ مهم جدًا مع HTTPS + Cookies
+
+/* =========================
+   🌍 CORS (Frontend ↔ Backend)
+========================= */
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://marketing-frontend.onrender.com",
+  "https://marketing-frontend-e1c3.onrender.com",
+];
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "https://marketing-frontend.onrender.com",
-      "https://marketing-frontend-e1c3.onrender.com",
-    ],
-    credentials: true,
+    origin: function (origin, callback) {
+      // السماح للـ Postman / SSR
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      } else {
+        return callback(
+          new Error("CORS not allowed for this origin"),
+          false
+        );
+      }
+    },
+    credentials: true, // ✅ ضروري للكوكيز
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-app.options("*", cors());
 app.use(express.json());
-app.use(cookieParser()); // ✅ NEW (مهم لقراءة HttpOnly Cookies)
+app.use(cookieParser()); // ✅ ضروري لقراءة HttpOnly Cookies
 
 /* =========================
-   SAFETY
+   🧯 SAFETY
 ========================= */
 process.on("unhandledRejection", (reason) => {
   console.error("Unhandled Rejection:", reason);
@@ -64,8 +82,10 @@ app.use(settingsRoutes);
 app.use(reportsRoutes);
 
 /* =========================
-   START SERVER
+   🚀 START SERVER
 ========================= */
+const PORT = process.env.PORT || 5000;
+
 mongoose
   .connect(process.env.MONGO_URI, {
     dbName: "marketing_task_system",
@@ -73,8 +93,8 @@ mongoose
   })
   .then(() => {
     console.log("MongoDB Atlas connected ✔");
-    app.listen(5000, () =>
-      console.log("Server running on port 5000")
+    app.listen(PORT, () =>
+      console.log(`Server running on port ${PORT}`)
     );
   })
   .catch((err) => {
