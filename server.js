@@ -4,6 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
+const morgan = require("morgan")
 
 // Routes
 const authRoutes = require("./routes/auth.routes");
@@ -28,7 +29,7 @@ const allowedOrigins = [
   "https://marketing-frontend.onrender.com",
   "https://marketing-frontend-e1c3.onrender.com",
 ];
-
+app.use(morgan("tiny"))
 app.use(
   cors({
     origin: function (origin, callback) {
