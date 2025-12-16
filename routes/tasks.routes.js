@@ -57,8 +57,9 @@ router.put(
 router.delete(
   "/tasks/:id",
   authenticateToken,
-  authorize(["Admin"]),
+  authorize(["Admin", "Manager"]),
   tasksController.deleteTask
 );
+
 
 module.exports = router;

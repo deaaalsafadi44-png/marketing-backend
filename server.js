@@ -3,6 +3,7 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
+const cookieParser = require("cookie-parser"); // ✅ NEW
 
 // Routes
 const authRoutes = require("./routes/auth.routes");
@@ -10,6 +11,7 @@ const usersRoutes = require("./routes/users.routes");
 const tasksRoutes = require("./routes/tasks.routes");
 const optionsRoutes = require("./routes/options.routes");
 const settingsRoutes = require("./routes/settings.routes");
+const reportsRoutes = require("./routes/reports.routes");
 
 const app = express();
 
@@ -31,6 +33,7 @@ app.use(
 
 app.options("*", cors());
 app.use(express.json());
+app.use(cookieParser()); // ✅ NEW (مهم لقراءة HttpOnly Cookies)
 
 /* =========================
    SAFETY
@@ -58,6 +61,7 @@ app.use(usersRoutes);
 app.use(tasksRoutes);
 app.use(optionsRoutes);
 app.use(settingsRoutes);
+app.use(reportsRoutes);
 
 /* =========================
    START SERVER
