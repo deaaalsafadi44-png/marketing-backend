@@ -1,3 +1,4 @@
+// server.js
 require("dotenv").config();
 
 const express = require("express");
@@ -6,15 +7,23 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 
+// Routes
+const authRoutes = require("./routes/auth.routes");
+const usersRoutes = require("./routes/users.routes");
+const tasksRoutes = require("./routes/tasks.routes");
+const optionsRoutes = require("./routes/options.routes");
+const settingsRoutes = require("./routes/settings.routes");
+const reportsRoutes = require("./routes/reports.routes");
+
 const app = express();
 
 /* =========================
-   🛡 TRUST PROXY (Render)
+   TRUST PROXY (Render)
 ========================= */
 app.set("trust proxy", 1);
 
 /* =========================
-   🌍 CORS
+   CORS
 ========================= */
 const allowedOrigins = [
   "http://localhost:5173",
@@ -27,30 +36,18 @@ app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
-
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
-      } else {
-        return callback(new Error("Not allowed by CORS"), false);
       }
+      return callback(new Error("CORS blocked"), false);
     },
     credentials: true,
   })
 );
 
+app.use(morgan("tiny"));
 app.use(express.json());
 app.use(cookieParser());
-app.use(morgan("tiny"));
-
-/* =========================
-   📦 ROUTES IMPORTS (FIX)
-========================= */
-const authRoutes = require("./routes/auth.routes");
-const usersRoutes = require("./routes/users.routes");
-const tasksRoutes = require("./routes/tasks.routes");
-const optionsRoutes = require("./routes/options.routes");
-const settingsRoutes = require("./routes/settings.routes");
-const reportsRoutes = require("./routes/reports.routes");
 
 /* =========================
    ROOT
@@ -60,7 +57,7 @@ app.get("/", (req, res) => {
 });
 
 /* =========================
-   ROUTES MOUNTING ✅
+   ROUTES (🔥 مهم جدًا)
 ========================= */
 app.use("/auth", authRoutes);
 app.use("/users", usersRoutes);
@@ -70,7 +67,7 @@ app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
 
 /* =========================
-   🚀 START SERVER
+   START SERVER
 ========================= */
 const PORT = process.env.PORT || 5000;
 
