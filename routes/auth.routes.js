@@ -6,24 +6,27 @@ const router = express.Router();
 
 /* =========================
    LOGIN
+   POST /auth/login
 ========================= */
 router.post("/login", authController.login);
 
 /* =========================
    REFRESH TOKEN
+   POST /auth/refresh
 ========================= */
 router.post("/refresh", authController.refreshToken);
 
 /* =========================
-   LOGOUT (HttpOnly Cookies)
+   LOGOUT
+   POST /auth/logout
 ========================= */
 router.post("/logout", authController.logout);
 
 /* =========================
-   AUTH CHECK (HttpOnly)
+   AUTH CHECK
    GET /auth/me
 ========================= */
-router.get("/auth/me", authenticateToken, (req, res) => {
+router.get("/me", authenticateToken, (req, res) => {
   res.json({
     user: req.user,
   });

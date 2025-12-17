@@ -5,6 +5,7 @@ const Options = require("../models/Options");
    ========================= */
 const getOptions = async () => {
   const options = await Options.findOne({}, { _id: 0 });
+
   return (
     options || {
       priority: [],
@@ -20,7 +21,6 @@ const getOptions = async () => {
 const saveOptions = async (data) => {
   await Options.deleteMany({});
   await Options.create(data);
-  return true;
 };
 
 module.exports = {
