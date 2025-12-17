@@ -7,58 +7,64 @@ const router = express.Router();
 
 /* =========================
    CREATE TASK
-   ========================= */
+   POST /tasks
+========================= */
 router.post(
-  "/tasks",
+  "/",
   authenticateToken,
-  authorize(["Admin", "Manager"]), // ✅ السماح للمانجير
+  authorize(["Admin", "Manager"]),
   tasksController.createTask
 );
 
 /* =========================
    GET ALL TASKS
-   ========================= */
+   GET /tasks
+========================= */
 router.get(
-  "/tasks",
+  "/",
   authenticateToken,
   tasksController.getAllTasks
 );
 
 /* =========================
    GET TASK BY ID
-   ========================= */
+   GET /tasks/:id
+========================= */
 router.get(
-  "/tasks/:id",
+  "/:id",
   authenticateToken,
   tasksController.getTaskById
 );
 
 /* =========================
    UPDATE TASK
-   ========================= */
+   PUT /tasks/:id
+========================= */
 router.put(
-  "/tasks/:id",
+  "/:id",
   authenticateToken,
-  authorize(["Admin", "Manager"]), // ✅ السماح للمانجير
+  authorize(["Admin", "Manager"]),
   tasksController.updateTask
 );
 
 /* =========================
    SAVE TIME
-   ========================= */
+   PUT /tasks/:id/time
+========================= */
 router.put(
-  "/tasks/:id/time",
+  "/:id/time",
   authenticateToken,
   tasksController.saveTaskTime
 );
 
 /* =========================
    DELETE TASK
-   ========================= */
+   DELETE /tasks/:id
+========================= */
 router.delete(
-  "/tasks/:id",
+  "/:id",
   authenticateToken,
-  authorize(["Admin", "Manager"]), // ✅ موجودة أصلاً (صحيحة)
+  authorize(["Admin", "Manager"]),
   tasksController.deleteTask
 );
 

@@ -7,41 +7,45 @@ const router = express.Router();
 
 /* =========================
    GET ALL USERS
-   ========================= */
+   GET /users
+========================= */
 router.get(
-  "/users",
+  "/",
   authenticateToken,
-  authorize(["Admin", "Manager"]), // ✅ السماح للمانجير
+  authorize(["Admin", "Manager"]),
   usersController.getAllUsers
 );
 
 /* =========================
    GET USER BY ID
-   ========================= */
+   GET /users/:id
+========================= */
 router.get(
-  "/users/:id",
+  "/:id",
   authenticateToken,
-  authorize(["Admin"]), // ❌ يبقى Admin فقط
+  authorize(["Admin"]),
   usersController.getUserById
 );
 
 /* =========================
    UPDATE USER
-   ========================= */
+   PUT /users/:id
+========================= */
 router.put(
-  "/users/:id",
+  "/:id",
   authenticateToken,
-  authorize(["Admin"]), // ❌ Admin فقط
+  authorize(["Admin"]),
   usersController.updateUser
 );
 
 /* =========================
    ADD USER
-   ========================= */
+   POST /users
+========================= */
 router.post(
-  "/users",
+  "/",
   authenticateToken,
-  authorize(["Admin"]), // ❌ Admin فقط
+  authorize(["Admin"]),
   usersController.createUser
 );
 

@@ -7,9 +7,10 @@ const router = express.Router();
 
 /* =========================
    GET SETTINGS
-   ========================= */
+   GET /settings
+========================= */
 router.get(
-  "/settings",
+  "/",
   authenticateToken,
   authorize(["Admin"]),
   settingsController.getSettings
@@ -17,9 +18,10 @@ router.get(
 
 /* =========================
    SAVE SETTINGS
-   ========================= */
+   PUT /settings
+========================= */
 router.put(
-  "/settings",
+  "/",
   authenticateToken,
   authorize(["Admin"]),
   settingsController.saveSettings

@@ -7,18 +7,20 @@ const router = express.Router();
 
 /* =========================
    GET OPTIONS
-   ========================= */
+   GET /options
+========================= */
 router.get(
-  "/options",
+  "/",
   authenticateToken,
   optionsController.getOptions
 );
 
 /* =========================
    SAVE OPTIONS
-   ========================= */
+   PUT /options
+========================= */
 router.put(
-  "/options",
+  "/",
   authenticateToken,
   authorize(["Admin"]),
   optionsController.saveOptions

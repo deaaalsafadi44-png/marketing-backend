@@ -7,13 +7,12 @@ const router = express.Router();
 
 /* =========================
    REPORTS SUMMARY
-   =========================
    GET /reports/summary
-*/
+========================= */
 router.get(
-  "/reports/summary",
+  "/summary",
   authenticateToken,
-  authorize(["Admin", "Manager"]), // ✅ التعديل هنا
+  authorize(["Admin", "Manager"]),
   reportsController.getSummaryReport
 );
 
