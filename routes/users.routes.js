@@ -11,7 +11,7 @@ const router = express.Router();
 router.get(
   "/users",
   authenticateToken,
-  authorize(["Admin"]),
+  authorize(["Admin", "Manager"]), // ✅ السماح للمانجير
   usersController.getAllUsers
 );
 
@@ -21,7 +21,7 @@ router.get(
 router.get(
   "/users/:id",
   authenticateToken,
-  authorize(["Admin"]),
+  authorize(["Admin"]), // ❌ يبقى Admin فقط
   usersController.getUserById
 );
 
@@ -31,7 +31,7 @@ router.get(
 router.put(
   "/users/:id",
   authenticateToken,
-  authorize(["Admin"]),
+  authorize(["Admin"]), // ❌ Admin فقط
   usersController.updateUser
 );
 
@@ -41,7 +41,7 @@ router.put(
 router.post(
   "/users",
   authenticateToken,
-  authorize(["Admin"]),
+  authorize(["Admin"]), // ❌ Admin فقط
   usersController.createUser
 );
 
