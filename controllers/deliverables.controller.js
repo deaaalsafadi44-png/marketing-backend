@@ -1,5 +1,4 @@
 const deliverablesService = require("../services/deliverables.service");
-const uploadToCloudinary = require("../utils/cloudinaryUpload"); // ✅ ADDED
 
 /*
   GET /deliverables
@@ -10,13 +9,14 @@ const getAllDeliverables = async (req, res) => {
     const data = await deliverablesService.getAllDeliverables();
     res.json(data);
   } catch (error) {
+    console.error("Get deliverables error:", error);
     res.status(500).json({ message: "Failed to load deliverables" });
   }
 };
 
 /*
   POST /deliverables
-  Create deliverable (with optional files)
+  Create deliverable (files will be added later)
 */
 const createDeliverable = async (req, res) => {
   try {
@@ -26,27 +26,17 @@ const createDeliverable = async (req, res) => {
       return res.status(400).json({ message: "taskId is required" });
     }
 
-    let uploadedFiles = [];
-
-    // ✅ If files are sent, upload them to Cloudinary
-    if (req.files && req.files.length > 0) {
-      for (const file of req.files) {
-        const uploaded = await uploadToCloudinary(file);
-        uploadedFiles.push(uploaded);
-      }
-    }
-
     const deliverable = await deliverablesService.createDeliverable({
-      taskId,
-      submittedById: req.user.id,
+      taskId: Number(taskId),                 // ✅ FIX
+      submittedById: Number(req.user.id),     // ✅ FIX
       submittedByName: req.user.name,
       notes,
-      files: uploadedFiles, // ✅ ADDED
+      files: [],
     });
 
     res.json(deliverable);
   } catch (error) {
-    console.error(error);
+    console.error("Create deliverable error:", error);
     res.status(500).json({ message: "Failed to create deliverable" });
   }
 };
