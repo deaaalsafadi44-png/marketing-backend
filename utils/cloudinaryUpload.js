@@ -1,46 +1,39 @@
 const cloudinary = require("../config/cloudinary");
 
 /*
-  Upload file buffer to Cloudinary
-  - Images -> image
-  - Videos -> video
-  - Other files -> raw
+  Upload file buffer to Cloudinary (SAFE for Render)
 */
+const uploadToCloudinary = async (file) => {
+  let resourceType = "raw";
 
-const uploadToCloudinary = (file) => {
-  return new Promise((resolve, reject) => {
-    let resourceType = "raw";
+  if (file.mimetype.startsWith("image/")) {
+    resourceType = "image";
+  } else if (file.mimetype.startsWith("video/")) {
+    resourceType = "video";
+  }
 
-    if (file.mimetype.startsWith("image/")) {
-      resourceType = "image";
-    } else if (file.mimetype.startsWith("video/")) {
-      resourceType = "video";
-    }
+  const base64 = `data:${file.mimetype};base64,${file.buffer.toString(
+    "base64"
+  )}`;
 
-    cloudinary.uploader.upload_stream(
-      {
-        resource_type: resourceType,
-        folder: "task-deliverables",
-      },
-      (error, result) => {
-        if (error) return reject(error);
-
-        resolve({
-          url: result.secure_url,
-          publicId: result.public_id,
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-          type:
-            resourceType === "image"
-              ? "image"
-              : resourceType === "video"
-              ? "video"
-              : "file",
-        });
-      }
-    ).end(file.buffer);
+  const result = await cloudinary.uploader.upload(base64, {
+    resource_type: resourceType,
+    folder: "task-deliverables",
   });
+
+  return {
+    url: result.secure_url,
+    publicId: result.public_id,
+    originalName: file.originalname,
+    mimeType: file.mimetype,
+    size: file.size,
+    type:
+      resourceType === "image"
+        ? "image"
+        : resourceType === "video"
+        ? "video"
+        : "file",
+  };
 };
 
 module.exports = uploadToCloudinary;
