@@ -57,12 +57,15 @@ app.get("/", (req, res) => {
   res.send("Backend is running ✔");
 });
 
-app.use("/auth", require("./routes/auth.routes"));
-app.use("/users", require("./routes/users.routes"));
-app.use("/tasks", require("./routes/tasks.routes"));
-app.use("/options", require("./routes/options.routes"));
-app.use("/settings", require("./routes/settings.routes"));
-app.use("/reports", require("./routes/reports.routes"));
+/* =========================
+   ROUTES
+========================= */
+app.use("/auth", authRoutes);
+app.use("/users", usersRoutes);
+app.use("/tasks", tasksRoutes);
+app.use("/options", optionsRoutes);
+app.use("/settings", settingsRoutes);
+app.use("/reports", reportsRoutes);
 
 /* =========================
    GLOBAL ERROR HANDLER
