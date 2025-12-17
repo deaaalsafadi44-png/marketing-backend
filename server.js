@@ -14,6 +14,7 @@ const tasksRoutes = require("./routes/tasks.routes");
 const optionsRoutes = require("./routes/options.routes");
 const settingsRoutes = require("./routes/settings.routes");
 const reportsRoutes = require("./routes/reports.routes");
+const deliverablesRoutes = require("./routes/deliverables.routes"); // ✅ ADDED
 
 const app = express();
 
@@ -65,6 +66,7 @@ app.use("/tasks", tasksRoutes);
 app.use("/options", optionsRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
+app.use("/deliverables", deliverablesRoutes); // ✅ ADDED
 
 /* =========================
    START SERVER
