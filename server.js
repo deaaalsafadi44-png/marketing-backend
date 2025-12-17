@@ -9,56 +9,58 @@ const morgan = require("morgan");
 const app = express();
 
 /* =========================
-   TRUST PROXY (Render)
+   🛡 TRUST PROXY (Render)
 ========================= */
 app.set("trust proxy", 1);
 
 /* =========================
-   CORS (🔥 مهم جدًا)
+   🌍 CORS
 ========================= */
 const allowedOrigins = [
   "http://localhost:5173",
+  "http://localhost:5174",
   "https://marketing-frontend.onrender.com",
   "https://marketing-frontend-e1c3.onrender.com",
 ];
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      // يسمح للـ Postman / server calls
+    origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
+      } else {
+        return callback(new Error("Not allowed by CORS"), false);
       }
-
-      return callback(null, true); // ⚠️ لا تمنع – فقط لا تضف origin
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
-// 🔥 preflight
-app.options("*", cors());
-
-/* =========================
-   MIDDLEWARES
-========================= */
 app.use(express.json());
 app.use(cookieParser());
-app.use(morgan("dev"));
+app.use(morgan("tiny"));
 
 /* =========================
-   ROUTES
+   📦 ROUTES IMPORTS (FIX)
+========================= */
+const authRoutes = require("./routes/auth.routes");
+const usersRoutes = require("./routes/users.routes");
+const tasksRoutes = require("./routes/tasks.routes");
+const optionsRoutes = require("./routes/options.routes");
+const settingsRoutes = require("./routes/settings.routes");
+const reportsRoutes = require("./routes/reports.routes");
+
+/* =========================
+   ROOT
 ========================= */
 app.get("/", (req, res) => {
   res.send("Backend is running ✔");
 });
 
 /* =========================
-   ROUTES
+   ROUTES MOUNTING ✅
 ========================= */
 app.use("/auth", authRoutes);
 app.use("/users", usersRoutes);
@@ -68,15 +70,7 @@ app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
 
 /* =========================
-   GLOBAL ERROR HANDLER
-========================= */
-app.use((err, req, res, next) => {
-  console.error("🔥 Error:", err);
-  res.status(500).json({ message: "Internal server error" });
-});
-
-/* =========================
-   START SERVER
+   🚀 START SERVER
 ========================= */
 const PORT = process.env.PORT || 5000;
 
@@ -90,4 +84,6 @@ mongoose
       console.log(`Server running on port ${PORT}`)
     );
   })
-  .catch((err) => console.error(err));
+  .catch((err) => {
+    console.error("MongoDB error:", err.message);
+  });
