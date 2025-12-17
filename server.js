@@ -6,23 +6,15 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 
-// Routes
-const authRoutes = require("./routes/auth.routes");
-const usersRoutes = require("./routes/users.routes");
-const tasksRoutes = require("./routes/tasks.routes");
-const optionsRoutes = require("./routes/options.routes");
-const settingsRoutes = require("./routes/settings.routes");
-const reportsRoutes = require("./routes/reports.routes");
-
 const app = express();
 
 /* =========================
-   🛡 TRUST PROXY (Render)
+   TRUST PROXY (Render)
 ========================= */
 app.set("trust proxy", 1);
 
 /* =========================
-   🌍 CORS CONFIG
+   CORS (🔥 مهم جدًا)
 ========================= */
 const allowedOrigins = [
   "http://localhost:5173",
@@ -33,15 +25,14 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      // السماح للـ Postman / Server-to-Server
+      // يسمح للـ Postman / server calls
       if (!origin) return callback(null, true);
 
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
 
-      // ❌ لا ترمي Error (تسبب فشل preflight)
-      return callback(null, false);
+      return callback(null, true); // ⚠️ لا تمنع – فقط لا تضف origin
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
@@ -49,59 +40,51 @@ app.use(
   })
 );
 
-// مهم جدًا للـ preflight
+// 🔥 preflight
 app.options("*", cors());
 
 /* =========================
-   🧰 MIDDLEWARES
+   MIDDLEWARES
 ========================= */
 app.use(express.json());
 app.use(cookieParser());
 app.use(morgan("dev"));
 
 /* =========================
-   ROOT
+   ROUTES
 ========================= */
 app.get("/", (req, res) => {
   res.send("Backend is running ✔");
 });
 
-/* =========================
-   ROUTES
-========================= */
-app.use("/auth", authRoutes);
-app.use("/users", usersRoutes);
-app.use("/tasks", tasksRoutes);
-app.use("/options", optionsRoutes);
-app.use("/settings", settingsRoutes);
-app.use("/reports", reportsRoutes);
+app.use("/auth", require("./routes/auth.routes"));
+app.use("/users", require("./routes/users.routes"));
+app.use("/tasks", require("./routes/tasks.routes"));
+app.use("/options", require("./routes/options.routes"));
+app.use("/settings", require("./routes/settings.routes"));
+app.use("/reports", require("./routes/reports.routes"));
 
 /* =========================
-   🧯 GLOBAL ERROR HANDLER
+   GLOBAL ERROR HANDLER
 ========================= */
 app.use((err, req, res, next) => {
-  console.error("🔥 Error:", err.message);
-  res.status(500).json({
-    message: "Internal server error",
-  });
+  console.error("🔥 Error:", err);
+  res.status(500).json({ message: "Internal server error" });
 });
 
 /* =========================
-   🚀 START SERVER
+   START SERVER
 ========================= */
 const PORT = process.env.PORT || 5000;
 
 mongoose
   .connect(process.env.MONGO_URI, {
     dbName: "marketing_task_system",
-    serverSelectionTimeoutMS: 5000,
   })
   .then(() => {
-    console.log("MongoDB Atlas connected ✔");
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
+    console.log("MongoDB connected ✔");
+    app.listen(PORT, () =>
+      console.log(`Server running on port ${PORT}`)
+    );
   })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err.message);
-  });
+  .catch((err) => console.error(err));
