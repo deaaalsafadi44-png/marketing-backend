@@ -1,4 +1,5 @@
 const deliverablesService = require("../services/deliverables.service");
+const uploadToCloudinary = require("../utils/cloudinaryUpload"); // ✅ ADDED
 
 /*
   GET /deliverables
@@ -16,7 +17,7 @@ const getAllDeliverables = async (req, res) => {
 
 /*
   POST /deliverables
-  Create deliverable (files will be added later)
+  Create deliverable + upload files
 */
 const createDeliverable = async (req, res) => {
   try {
@@ -26,12 +27,26 @@ const createDeliverable = async (req, res) => {
       return res.status(400).json({ message: "taskId is required" });
     }
 
+    /* =========================
+       🔼 UPLOAD FILES
+    ========================= */
+    let uploadedFiles = [];
+
+    if (req.files && req.files.length > 0) {
+      uploadedFiles = await Promise.all(
+        req.files.map((file) => uploadToCloudinary(file))
+      );
+    }
+
+    /* =========================
+       💾 SAVE DELIVERABLE
+    ========================= */
     const deliverable = await deliverablesService.createDeliverable({
-      taskId: Number(taskId),                 // ✅ FIX
-      submittedById: Number(req.user.id),     // ✅ FIX
+      taskId: Number(taskId),
+      submittedById: Number(req.user.id),
       submittedByName: req.user.name,
       notes,
-      files: [],
+      files: uploadedFiles, // ✅ NOW SAVED
     });
 
     res.json(deliverable);
