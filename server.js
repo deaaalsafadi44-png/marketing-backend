@@ -40,11 +40,17 @@ app.use(
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error("CORS blocked"), false);
+      return callback(null, false); // ✅ لا ترمي Error
     },
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ✅
+    allowedHeaders: ["Content-Type", "Authorization"],   // ✅
   })
 );
+
+// ✅ مهم جدًا للـ preflight
+app.options("*", cors());
+
 
 app.use(morgan("tiny"));
 app.use(express.json());
