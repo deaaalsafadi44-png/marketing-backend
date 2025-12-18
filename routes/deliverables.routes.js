@@ -1,14 +1,8 @@
 const express = require("express");
 const router = express.Router();
 
-/**
- * TEST ROUTE (NO AUTH, NO UPLOAD, NO CONTROLLER)
- */
-router.post("/", (req, res) => {
-  return res.json({
-    ok: true,
-    message: "DELIVERABLES ROUTE WORKS",
-  });
+router.get("/", (req, res) => {
+  res.json({ ok: true, message: "deliverables route works" });
 });
 
 module.exports = router;
