@@ -1,16 +1,14 @@
 const cloudinary = require("../config/cloudinary");
 
 /*
-  Upload file buffer to Cloudinary (SAFE for Render)
+  Upload file to Cloudinary using base64 (Render-safe)
 */
 const uploadToCloudinary = async (file) => {
-  let resourceType = "raw";
-
-  if (file.mimetype.startsWith("image/")) {
-    resourceType = "image";
-  } else if (file.mimetype.startsWith("video/")) {
-    resourceType = "video";
-  }
+  const resourceType = file.mimetype.startsWith("image/")
+    ? "image"
+    : file.mimetype.startsWith("video/")
+    ? "video"
+    : "raw";
 
   const base64 = `data:${file.mimetype};base64,${file.buffer.toString(
     "base64"
