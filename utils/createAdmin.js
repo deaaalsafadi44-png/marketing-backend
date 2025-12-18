@@ -1,32 +1,42 @@
-const User = require("../models/User");
-const bcrypt = require("bcryptjs");
+const deliverablesService = require("../services/deliverables.service");
+const cloudinary = require("../utils/cloudinary");
 
-const createAdminIfNotExists = async () => {
+exports.createDeliverable = async (req, res) => {
   try {
-    const adminExists = await User.findOne({ role: "admin" });
+    const { taskId, notes } = req.body;
 
-    if (adminExists) {
-      console.log("👤 Admin already exists");
-      return;
+    if (!taskId) {
+      return res.status(400).json({ message: "taskId is required" });
     }
 
-    const hashedPassword = await bcrypt.hash("Admin@123", 10);
+    const uploadedFiles = [];
 
-    const admin = new User({
-      name: "System Admin",
-      email: "admin@system.com",
-      password: hashedPassword,
-      role: "admin",
+    if (req.files && req.files.length > 0) {
+      for (const file of req.files) {
+        const result = await cloudinary.uploader.upload(file.path, {
+          folder: "task-deliverables",
+        });
+
+        uploadedFiles.push({
+          url: result.secure_url,
+          originalName: file.originalname,
+          publicId: result.public_id,
+        });
+      }
+    }
+
+    const deliverable = await deliverablesService.createDeliverable({
+      taskId: Number(taskId),
+      notes: notes || "",
+      submittedById: req.user.id,
+      submittedByName:
+        req.user.name || req.user.username || "Unknown",
+      files: uploadedFiles, // ✅ هنا الإصلاح
     });
 
-    await admin.save();
-
-    console.log("✅ Admin account created successfully");
-    console.log("📧 Email: admin@system.com");
-    console.log("🔑 Password: Admin@123");
-  } catch (error) {
-    console.error("❌ Error creating admin:", error.message);
+    res.status(201).json(deliverable);
+  } catch (err) {
+    console.error("CREATE DELIVERABLE ERROR:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
-
-module.exports = createAdminIfNotExists;

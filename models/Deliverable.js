@@ -1,15 +1,15 @@
 const mongoose = require("mongoose");
 
-const deliverableSchema = new mongoose.Schema(
+const DeliverableSchema = new mongoose.Schema(
   {
     taskId: {
-      type: String,
+      type: Number,
       required: true,
       index: true,
     },
 
     submittedById: {
-      type: String,
+      type: Number,
       required: true,
     },
 
@@ -25,33 +25,13 @@ const deliverableSchema = new mongoose.Schema(
 
     files: [
       {
-        url: {
-          type: String,
-          required: true,
-        },
-        publicId: {
-          type: String,
-        },
-        originalName: {
-          type: String,
-        },
-        mimeType: {
-          type: String,
-        },
-        size: {
-          type: Number,
-        },
+        url: { type: String, required: true },
+        originalName: { type: String, required: true },
+        publicId: { type: String, required: true },
       },
     ],
-
-    createdAt: {
-      type: Date,
-      default: Date.now,
-    },
   },
-  {
-    timestamps: false,
-  }
+  { timestamps: true }
 );
 
-module.exports = mongoose.model("Deliverable", deliverableSchema);
+module.exports = mongoose.model("Deliverable", DeliverableSchema);

@@ -14,18 +14,14 @@ const tasksRoutes = require("./routes/tasks.routes");
 const optionsRoutes = require("./routes/options.routes");
 const settingsRoutes = require("./routes/settings.routes");
 const reportsRoutes = require("./routes/reports.routes");
-const deliverablesRoutes = require("./routes/deliverables.routes"); // ✅ ADDED
+const deliverablesRoutes = require("./routes/deliverables.routes");
 
 const app = express();
 
-/* =========================
-   TRUST PROXY (Render)
-========================= */
+/* TRUST PROXY */
 app.set("trust proxy", 1);
 
-/* =========================
-   CORS
-========================= */
+/* CORS */
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
@@ -35,61 +31,41 @@ const allowedOrigins = [
 
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, false); // ✅ لا ترمي Error
+      return callback(null, false);
     },
     credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ✅
-    allowedHeaders: ["Content-Type", "Authorization"],   // ✅
   })
 );
 
-// ✅ مهم جدًا للـ preflight
 app.options("*", cors());
-
 
 app.use(morgan("tiny"));
 app.use(express.json());
 app.use(cookieParser());
 
-/* =========================
-   ROOT
-========================= */
+/* ROOT */
 app.get("/", (req, res) => {
   res.send("Backend is running ✔");
 });
 
-/* =========================
-   ROUTES (🔥 مهم جدًا)
-========================= */
+/* ROUTES */
 app.use("/auth", authRoutes);
 app.use("/users", usersRoutes);
 app.use("/tasks", tasksRoutes);
 app.use("/options", optionsRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
-app.use("/deliverables", deliverablesRoutes); // ✅ ADDED
-exports.updateDeliverableFiles = async (id, files) => {
-  return Deliverable.findByIdAndUpdate(
-    id,
-    { $set: { files } },
-    { new: true }
-  );
-};
+app.use("/deliverables", deliverablesRoutes);
 
-/* =========================
-   START SERVER
-========================= */
+/* START SERVER */
 const PORT = process.env.PORT || 5000;
 
 mongoose
-  .connect(process.env.MONGO_URI, {
-    dbName: "marketing_task_system",
-  })
+  .connect(process.env.MONGO_URI, { dbName: "marketing_task_system" })
   .then(() => {
     console.log("MongoDB connected ✔");
     app.listen(PORT, () =>
