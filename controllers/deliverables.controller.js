@@ -1,3 +1,5 @@
+console.log("GET ALL DELIVERABLES HIT");
+
 const deliverablesService = require("../services/deliverables.service");
 const uploadToCloudinary = require("../utils/cloudinaryUpload"); // موجود بس لن نستخدمه الآن
 
@@ -11,35 +13,32 @@ const getAllDeliverables = async (req, res) => {
   }
 };
 
-const createDeliverable = async (req, res) => {
+exports.createDeliverable = async (req, res) => {
   try {
-    console.log("---- DEBUG /deliverables ----");
-    console.log("body:", req.body);
-    console.log("user:", req.user?.id, req.user?.name);
-    console.log("files exists?", !!req.files);
-    console.log("files length:", req.files?.length);
+    console.log("========== NEW DELIVERABLE ==========");
+    console.log("BODY:", req.body);
+    console.log("FILES:", req.files);
+    console.log("====================================");
 
-    return res.json({
-      ok: true,
-      body: req.body,
-      user: req.user ? { id: req.user.id, name: req.user.name } : null,
-      filesCount: req.files?.length || 0,
-      file0: req.files?.[0]
-        ? {
-            originalname: req.files[0].originalname,
-            mimetype: req.files[0].mimetype,
-            size: req.files[0].size,
-          }
-        : null,
+    const { taskId, notes } = req.body;
+
+    if (!taskId) {
+      console.log("❌ taskId MISSING");
+      return res.status(400).json({ message: "taskId is required" });
+    }
+
+    // لا تغيّر أي منطق آخر الآن
+    // فقط دعنا نرى ماذا يصل
+
+    res.status(200).json({
+      message: "Debug mode – check server logs",
     });
-  } catch (error) {
-    console.error("DEBUG ERROR:", error);
-    return res.status(500).json({
-      message: "debug failed",
-      error: error?.message || "Unknown error",
-    });
+  } catch (err) {
+    console.error("CREATE DELIVERABLE ERROR:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
+
 
 module.exports = {
   getAllDeliverables,
