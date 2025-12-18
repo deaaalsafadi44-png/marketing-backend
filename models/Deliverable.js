@@ -1,46 +1,18 @@
-const mongoose = require("mongoose");
+const cloudinary = require("cloudinary").v2;
 
-/*
-  Each deliverable represents
-  what a user submitted for a task
-*/
+module.exports = (file) => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "marketing_task_system/deliverables",
+        resource_type: "auto",
+      },
+      (error, result) => {
+        if (error) return reject(error);
+        resolve(result);
+      }
+    );
 
-const DeliverableFileSchema = new mongoose.Schema(
-  {
-    url: { type: String, required: true },          // Cloudinary URL
-    originalName: { type: String, required: true }, // File name
-    mimeType: { type: String, required: true },     // image/png, video/mp4, etc
-    size: { type: Number, required: true },         // bytes
-    type: {
-      type: String,
-      enum: ["image", "video", "file"],
-      required: true
-    }
-  },
-  { _id: false }
-);
-
-const DeliverableSchema = new mongoose.Schema(
-  {
-    // Link to task
-    taskId: { type: Number, required: true },
-
-    // User who submitted
-    submittedById: { type: Number, required: true },
-    submittedByName: { type: String, required: true },
-
-    // Optional description
-    notes: { type: String, default: "" },
-
-    // Uploaded files
-    files: { type: [DeliverableFileSchema], default: [] },
-
-    createdAt: {
-      type: Date,
-      default: Date.now
-    }
-  },
-  { versionKey: false }
-);
-
-module.exports = mongoose.model("Deliverable", DeliverableSchema);
+    stream.end(file.buffer);
+  });
+};
