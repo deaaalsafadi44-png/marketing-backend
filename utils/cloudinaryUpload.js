@@ -1,28 +1,40 @@
 const cloudinary = require("../config/cloudinary");
 
-/*
-  Upload file to Cloudinary using base64 (Render-safe)
-*/
 const uploadToCloudinary = async (file) => {
-  const base64 = `data:${file.mimetype};base64,${file.buffer.toString("base64")}`;
+  try {
+    let resourceType = "raw";
 
-  const result = await cloudinary.uploader.upload(base64, {
-    folder: "task-deliverables",
-    resource_type: "auto",
-  });
+    if (file.mimetype.startsWith("image/")) {
+      resourceType = "image";
+    } else if (file.mimetype.startsWith("video/")) {
+      resourceType = "video";
+    }
 
-  return {
-    url: result.secure_url,
-    publicId: result.public_id,
-    originalName: file.originalname,
-    mimeType: file.mimetype,
-    size: file.size,
-    type: file.mimetype.startsWith("image")
-      ? "image"
-      : file.mimetype.startsWith("video")
-      ? "video"
-      : "file",
-  };
+    // ✅ Convert buffer to base64
+    const base64 = file.buffer.toString("base64");
+    const dataUri = `data:${file.mimetype};base64,${base64}`;
+
+    const result = await cloudinary.uploader.upload(dataUri, {
+      resource_type: resourceType,
+      folder: "task-deliverables",
+    });
+
+    return {
+      url: result.secure_url,
+      originalName: file.originalname,
+      mimeType: file.mimetype,
+      size: file.size,
+      type:
+        resourceType === "image"
+          ? "image"
+          : resourceType === "video"
+          ? "video"
+          : "file",
+    };
+  } catch (error) {
+    console.error("Cloudinary upload error:", error);
+    throw error;
+  }
 };
 
 module.exports = uploadToCloudinary;
