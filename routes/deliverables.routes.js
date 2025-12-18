@@ -1,29 +1,20 @@
 const express = require("express");
+const authenticateToken = require("../middlewares/authenticateToken");
+const deliverablesController = require("../controllers/deliverables.controller");
+
 const router = express.Router();
 
-const authenticateToken = require("../middlewares/authenticateToken");
-const upload = require("../middlewares/upload");
-
-const deliverablesController = require(
-  "../controllers/deliverables.controller"
-);
-
-/*
-  GET /deliverables
-*/
+// ✅ GET /deliverables
 router.get(
   "/",
   authenticateToken,
   deliverablesController.getAllDeliverables
 );
 
-/*
-  POST /deliverables
-*/
+// ✅ POST /deliverables
 router.post(
   "/",
   authenticateToken,
-  upload.array("files", 10),
   deliverablesController.createDeliverable
 );
 
