@@ -73,6 +73,13 @@ app.use("/options", optionsRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
 app.use("/deliverables", deliverablesRoutes); // ✅ ADDED
+exports.updateDeliverableFiles = async (id, files) => {
+  return Deliverable.findByIdAndUpdate(
+    id,
+    { $set: { files } },
+    { new: true }
+  );
+};
 
 /* =========================
    START SERVER
