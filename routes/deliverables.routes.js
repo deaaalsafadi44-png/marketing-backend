@@ -23,6 +23,12 @@ router.post(
   "/",
   authenticateToken,
   upload.array("files", 10),
+  (req, res, next) => {
+    console.log("🚀 POST /deliverables HIT");
+    console.log("📦 req.body:", req.body);
+    console.log("📁 req.files:", req.files);
+    next();
+  },
   deliverablesController.createDeliverable
 );
 
