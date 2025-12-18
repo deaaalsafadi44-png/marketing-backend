@@ -6,16 +6,10 @@ const {
   createDeliverable,
 } = require("../controllers/deliverables.controller");
 
-const auth = require("../middlewares/auth");
-const upload = require("../middlewares/upload"); // multer
+// ❌ احذف أو علّق auth
+// const auth = require("../middlewares/auth");
 
-router.get("/", auth, getAllDeliverables);
-
-router.post(
-  "/",
-  auth,
-  upload.array("files"), // ⚠️ مهم جدًا
-  createDeliverable
-);
+router.get("/", getAllDeliverables);
+router.post("/", createDeliverable);
 
 module.exports = router;
