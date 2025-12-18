@@ -1,5 +1,5 @@
 const deliverablesService = require("../services/deliverables.service");
-const uploadToCloudinary = require("../utils/cloudinaryUpload");
+const uploadToCloudinary = require("../utils/cloudinaryUpload"); // موجود بس لن نستخدمه الآن
 
 const getAllDeliverables = async (req, res) => {
   try {
@@ -13,33 +13,30 @@ const getAllDeliverables = async (req, res) => {
 
 const createDeliverable = async (req, res) => {
   try {
-    const { taskId, notes } = req.body;
+    console.log("---- DEBUG /deliverables ----");
+    console.log("body:", req.body);
+    console.log("user:", req.user?.id, req.user?.name);
+    console.log("files exists?", !!req.files);
+    console.log("files length:", req.files?.length);
 
-    if (!taskId) {
-      return res.status(400).json({ message: "taskId is required" });
-    }
-
-    let uploadedFiles = [];
-    if (req.files && req.files.length > 0) {
-      uploadedFiles = await Promise.all(
-        req.files.map((file) => uploadToCloudinary(file))
-      );
-    }
-
-    const deliverable = await deliverablesService.createDeliverable({
-      taskId: Number(taskId),
-      submittedById: Number(req.user.id),
-      submittedByName: req.user.name,
-      notes,
-      files: uploadedFiles,
+    return res.json({
+      ok: true,
+      body: req.body,
+      user: req.user ? { id: req.user.id, name: req.user.name } : null,
+      filesCount: req.files?.length || 0,
+      file0: req.files?.[0]
+        ? {
+            originalname: req.files[0].originalname,
+            mimetype: req.files[0].mimetype,
+            size: req.files[0].size,
+          }
+        : null,
     });
-
-    res.json(deliverable);
   } catch (error) {
-    console.error("Create deliverable error:", error);
-    res.status(500).json({
-      message: "Failed to create deliverable",
-      error: error.message,
+    console.error("DEBUG ERROR:", error);
+    return res.status(500).json({
+      message: "debug failed",
+      error: error?.message || "Unknown error",
     });
   }
 };
