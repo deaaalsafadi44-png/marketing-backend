@@ -1,35 +1,21 @@
 const express = require("express");
-const authenticateToken = require("../middlewares/authenticateToken");
-const deliverablesController = require("../controllers/deliverables.controller");
-const upload = require("../middlewares/upload"); // ✅ ADDED
-
 const router = express.Router();
 
-/*
-  Deliverables Routes
-  This file handles task submissions (deliverables)
-  Upload logic will be added later step-by-step
-*/
+const {
+  getAllDeliverables,
+  createDeliverable,
+} = require("../controllers/deliverables.controller");
 
-/*
-  GET /deliverables
-  Used for the page that shows boxes of submitted tasks
-*/
-router.get(
-  "/",
-  authenticateToken,
-  deliverablesController.getAllDeliverables
-);
+const auth = require("../middlewares/auth");
+const upload = require("../middlewares/upload"); // multer
 
-/*
-  POST /deliverables
-  Will be used later to submit task files
-*/
+router.get("/", auth, getAllDeliverables);
+
 router.post(
   "/",
-  authenticateToken,
-  upload.array("files", 10), // ✅ ADDED (max 10 files)
-  deliverablesController.createDeliverable
+  auth,
+  upload.array("files"), // ⚠️ مهم جدًا
+  createDeliverable
 );
 
 module.exports = router;

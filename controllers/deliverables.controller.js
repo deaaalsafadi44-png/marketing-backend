@@ -1,6 +1,16 @@
 const deliverablesService = require("../services/deliverables.service");
 const uploadToCloudinary = require("../utils/cloudinaryUpload");
 
+const getAllDeliverables = async (req, res) => {
+  try {
+    const data = await deliverablesService.getAllDeliverables();
+    res.json(data);
+  } catch (error) {
+    console.error("Get deliverables error:", error);
+    res.status(500).json({ message: "Failed to load deliverables" });
+  }
+};
+
 const createDeliverable = async (req, res) => {
   try {
     const { taskId, notes } = req.body;
@@ -10,7 +20,6 @@ const createDeliverable = async (req, res) => {
     }
 
     let uploadedFiles = [];
-
     if (req.files && req.files.length > 0) {
       uploadedFiles = await Promise.all(
         req.files.map((file) => uploadToCloudinary(file))
@@ -36,5 +45,6 @@ const createDeliverable = async (req, res) => {
 };
 
 module.exports = {
+  getAllDeliverables,
   createDeliverable,
 };
