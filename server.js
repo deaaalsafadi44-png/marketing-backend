@@ -14,7 +14,7 @@ const tasksRoutes = require("./routes/tasks.routes");
 const optionsRoutes = require("./routes/options.routes");
 const settingsRoutes = require("./routes/settings.routes");
 const reportsRoutes = require("./routes/reports.routes");
-const deliverablesRoutes = require("./routes/deliverables.routes"); // ✅ ADDED
+const deliverablesRoutes = require("./routes/deliverables.routes");
 
 const app = express();
 
@@ -24,34 +24,21 @@ const app = express();
 app.set("trust proxy", 1);
 
 /* =========================
-   CORS
+   🔥 CORS (FINAL – DO NOT TOUCH)
 ========================= */
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "https://marketing-frontend.onrender.com",
-  "https://marketing-frontend-e1c3.onrender.com",
-];
-
 app.use(
   cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(null, false); // ✅ لا ترمي Error
-    },
-    credentials: true,
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"], // ✅
-    allowedHeaders: ["Content-Type", "Authorization"],   // ✅
+    origin: true,        // ✅ يعكس الـ origin القادم
+    credentials: true,   // ✅ يسمح بالكوكيز
   })
 );
 
-// ✅ مهم جدًا للـ preflight
+// ✅ ضروري جدًا لـ preflight (OPTIONS)
 app.options("*", cors());
 
-
+/* =========================
+   MIDDLEWARES
+========================= */
 app.use(morgan("tiny"));
 app.use(express.json());
 app.use(cookieParser());
@@ -64,7 +51,7 @@ app.get("/", (req, res) => {
 });
 
 /* =========================
-   ROUTES (🔥 مهم جدًا)
+   ROUTES
 ========================= */
 app.use("/auth", authRoutes);
 app.use("/users", usersRoutes);
@@ -72,7 +59,7 @@ app.use("/tasks", tasksRoutes);
 app.use("/options", optionsRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
-app.use("/deliverables", deliverablesRoutes); // ✅ ADDED
+app.use("/deliverables", deliverablesRoutes);
 
 /* =========================
    START SERVER
@@ -85,9 +72,9 @@ mongoose
   })
   .then(() => {
     console.log("MongoDB connected ✔");
-    app.listen(PORT, () =>
-      console.log(`Server running on port ${PORT}`)
-    );
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   })
   .catch((err) => {
     console.error("MongoDB error:", err.message);
