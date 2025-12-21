@@ -2,7 +2,7 @@ const usersService = require("../services/users.service");
 
 /* =========================
    GET ALL USERS
-   ========================= */
+========================= */
 const getAllUsers = async (req, res) => {
   try {
     const users = await usersService.getAllUsers();
@@ -15,7 +15,7 @@ const getAllUsers = async (req, res) => {
 
 /* =========================
    GET USER BY ID
-   ========================= */
+========================= */
 const getUserById = async (req, res) => {
   const userId = Number(req.params.id);
   if (isNaN(userId))
@@ -35,7 +35,7 @@ const getUserById = async (req, res) => {
 
 /* =========================
    UPDATE USER
-   ========================= */
+========================= */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
   if (isNaN(userId))
@@ -55,7 +55,7 @@ const updateUser = async (req, res) => {
 
 /* =========================
    CREATE USER
-   ========================= */
+========================= */
 const createUser = async (req, res) => {
   try {
     const user = await usersService.createUser(req.body);
@@ -76,9 +76,30 @@ const createUser = async (req, res) => {
   }
 };
 
+/* =========================
+   DELETE USER ✅ (المضاف)
+========================= */
+const deleteUser = async (req, res) => {
+  const userId = Number(req.params.id);
+  if (isNaN(userId))
+    return res.status(400).json({ message: "Invalid user id" });
+
+  try {
+    const deleted = await usersService.deleteUser(userId);
+    if (!deleted)
+      return res.status(404).json({ message: "User not found" });
+
+    res.json({ message: "User deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete user" });
+  }
+};
+
 module.exports = {
   getAllUsers,
   getUserById,
   updateUser,
   createUser,
+  deleteUser, // ✅ مهم جدًا
 };
