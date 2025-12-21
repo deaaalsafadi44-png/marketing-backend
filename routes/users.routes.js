@@ -49,4 +49,15 @@ router.post(
   usersController.createUser
 );
 
+/* =========================
+   DELETE USER ✅ (المفقود)
+   DELETE /users/:id
+========================= */
+router.delete(
+  "/:id",
+  authenticateToken,
+  authorize(["Admin"]),
+  usersController.deleteUser
+);
+
 module.exports = router;
