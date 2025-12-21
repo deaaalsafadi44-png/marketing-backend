@@ -3,7 +3,7 @@ const bcrypt = require("bcryptjs");
 
 /* =========================
    GET ALL USERS
-   ========================= */
+========================= */
 const getAllUsers = async () => {
   return await User.find(
     {},
@@ -13,7 +13,7 @@ const getAllUsers = async () => {
 
 /* =========================
    GET USER BY ID
-   ========================= */
+========================= */
 const getUserById = async (id) => {
   return await User.findOne(
     { id },
@@ -23,7 +23,7 @@ const getUserById = async (id) => {
 
 /* =========================
    UPDATE USER
-   ========================= */
+========================= */
 const updateUser = async (id, data) => {
   if (data.password) {
     data.password = await bcrypt.hash(data.password, 10);
@@ -39,8 +39,16 @@ const updateUser = async (id, data) => {
 };
 
 /* =========================
+   DELETE USER ✅ (الحل هنا)
+========================= */
+const deleteUser = async (id) => {
+  const result = await User.findOneAndDelete({ id });
+  return result;
+};
+
+/* =========================
    CREATE USER
-   ========================= */
+========================= */
 const createUser = async (data) => {
   const exists = await User.findOne({ email: data.email });
   if (exists) throw new Error("Email already exists");
@@ -61,5 +69,6 @@ module.exports = {
   getAllUsers,
   getUserById,
   updateUser,
+  deleteUser, // ✅ مهم جدًا
   createUser,
 };
