@@ -32,3 +32,4 @@ router.get("/me", authenticateToken, (req, res) => {
   });
 });
 
+module.exports = router; // 🔥 هذا هو الحل
