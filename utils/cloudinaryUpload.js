@@ -4,10 +4,19 @@ const uploadToCloudinary = async (file) => {
   try {
     let resourceType = "raw";
 
+    // صور
     if (file.mimetype.startsWith("image/")) {
       resourceType = "image";
-    } else if (file.mimetype.startsWith("video/")) {
+    }
+
+    // فيديو
+    else if (file.mimetype.startsWith("video/")) {
       resourceType = "video";
+    }
+
+    // ✅ PDF يُعامل كـ image (الإضافة المطلوبة فقط)
+    else if (file.mimetype === "application/pdf") {
+      resourceType = "image";
     }
 
     const base64 = file.buffer.toString("base64");
@@ -18,7 +27,7 @@ const uploadToCloudinary = async (file) => {
       resource_type: resourceType,
     });
 
-    // ⬇️ تمت الإضافة هنا فقط بدون حذف أي شيء
+    // ⬇️ لم نحذف أو نغيّر أي شيء هنا
     return {
       // الحقول الأصلية (كما هي)
       url: result.secure_url,
@@ -27,7 +36,7 @@ const uploadToCloudinary = async (file) => {
       size: file.size,
       type: resourceType,
 
-      // الحقول المضافة لدعم العرض في الفرونت
+      // الحقول المضافة سابقًا (كما هي)
       resource_type: result.resource_type,
       format: result.format,
       public_id: result.public_id,
