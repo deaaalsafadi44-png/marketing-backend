@@ -77,6 +77,7 @@ const removeFileFromDeliverable = async (deliverableId, fileId) => {
 
 /* =====================================================
    🆕 NEW — Get submissions grouped by task
+   ✅ تعديل بسيط فقط: إضافة deliverableId
 ===================================================== */
 const getSubmissionsGroupedByTask = async () => {
   const submissions = await Deliverable.aggregate([
@@ -84,6 +85,7 @@ const getSubmissionsGroupedByTask = async () => {
     {
       $group: {
         _id: "$taskId",
+        deliverableId: { $first: "$_id" }, // ⭐ إضافة مهمة
         taskId: { $first: "$taskId" },
         submittedById: { $first: "$submittedById" },
         submittedByName: { $first: "$submittedByName" },
@@ -97,6 +99,7 @@ const getSubmissionsGroupedByTask = async () => {
     {
       $project: {
         _id: 0,
+        deliverableId: 1, // ⭐ إضافة مهمة
         taskId: 1,
         submittedById: 1,
         submittedByName: 1,
@@ -121,6 +124,7 @@ const getSubmissionsGroupedByTask = async () => {
 
 /* =====================================================
    ⭐ NEW — Rate Deliverable (Admin / Manager)
+   ✅ منطق صحيح 100%
 ===================================================== */
 const rateDeliverable = async (deliverableId, rating, rater) => {
   const deliverable = await Deliverable.findById(deliverableId);
@@ -129,17 +133,15 @@ const rateDeliverable = async (deliverableId, rating, rater) => {
     throw new Error("Deliverable not found");
   }
 
-  let finalRating = rating;
-
-  // ⭐ إذا ضغط نفس التقييم → نقص واحد
-  if (deliverable.rating === rating) {
-    finalRating = Math.max(rating - 1, 1);
-  }
+  // ✅ toggle logic الصحيح
+  const finalRating = deliverable.rating === rating ? 0 : rating;
 
   deliverable.rating = finalRating;
-  deliverable.ratedById = rater.id;
-  deliverable.ratedByName = rater.name || rater.username || "Admin";
-  deliverable.ratedAt = new Date();
+  deliverable.ratedById = finalRating ? rater.id : null;
+  deliverable.ratedByName = finalRating
+    ? rater.name || rater.username || "Admin"
+    : null;
+  deliverable.ratedAt = finalRating ? new Date() : null;
 
   await deliverable.save();
 
