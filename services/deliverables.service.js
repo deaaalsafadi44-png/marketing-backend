@@ -29,16 +29,13 @@ const createDeliverable = async ({
   // لكن لا نُرجعه للواجهة
   const plain = saved.toObject();
 
-  // ✅ الإضافة الوحيدة (الحل)
-  plain.deliverableId = saved._id;
+  // ✅ الحل النهائي: خزّن id داخلياً قبل الحذف (للاستخدام في الكنترولر)
+  plain.__internalId = plain._id;
 
   delete plain._id;
 
-  // 🧪 LOG 2: التحقق من الـ ID بعد التعديل
-  console.log(
-    "🧪 [SERVICE:createDeliverable] returned deliverableId =",
-    plain.deliverableId
-  );
+  // 🧪 LOG 2: _id بعد الحذف
+  console.log("🧪 [SERVICE:createDeliverable] plain._id =", plain._id);
 
   return plain;
 };
