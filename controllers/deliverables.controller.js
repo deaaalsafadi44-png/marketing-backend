@@ -1,6 +1,10 @@
 const deliverablesService = require("../services/deliverables.service");
 const uploadToCloudinary = require("../utils/cloudinaryUpload");
+const cloudinary = require("cloudinary").v2;
 
+/* =========================
+   GET ALL DELIVERABLES
+========================= */
 exports.getAllDeliverables = async (req, res) => {
   try {
     const { taskId } = req.query;
@@ -12,8 +16,11 @@ exports.getAllDeliverables = async (req, res) => {
   }
 };
 
+/* =========================
+   CREATE DELIVERABLE
+========================= */
 exports.createDeliverable = async (req, res) => {
-  let deliverable; // سنحتاجه بعد الرد
+  let deliverable;
 
   try {
     console.log("========== NEW DELIVERABLE ==========");
@@ -39,14 +46,14 @@ exports.createDeliverable = async (req, res) => {
 
     console.log("🧪 [CONTROLLER] deliverable._id =", deliverable?._id);
 
-    // ✅ رد فوري للواجهة
+    // رد فوري
     res.status(201).json(deliverable);
   } catch (err) {
     console.error("CREATE DELIVERABLE ERROR:", err);
     return res.status(500).json({ message: "Server error" });
   }
 
-  // 2) المرحلة الثانية: رفع وربط الملفات (بعد الرد)
+  // 2) رفع وربط الملفات بعد الرد
   try {
     if (req.files && req.files.length > 0) {
       const uploadedFiles = await Promise.all(
@@ -59,17 +66,10 @@ exports.createDeliverable = async (req, res) => {
             originalName: uploadRes.originalName,
             mimeType: uploadRes.mimeType,
             size: uploadRes.size,
-
-            // ⭐ الحقول الحاسمة التي يعتمد عليها الفرونت
             resource_type: uploadRes.resource_type,
             format: uploadRes.format,
           };
         })
-      );
-
-      console.log(
-        "🧪 [CONTROLLER] linking files to deliverableId =",
-        deliverable?._id
       );
 
       await deliverablesService.updateDeliverableFiles(
@@ -80,6 +80,51 @@ exports.createDeliverable = async (req, res) => {
       console.log("✅ Files uploaded & linked to deliverable");
     }
   } catch (fileErr) {
-    console.error("⚠️ FILE UPLOAD FAILED (deliverable محفوظ):", fileErr);
+    console.error("⚠️ FILE UPLOAD FAILED:", fileErr);
+  }
+};
+
+/* =========================
+   DELETE FILE FROM DELIVERABLE ✅ NEW
+   DELETE /deliverables/:deliverableId/files/:fileId
+========================= */
+exports.deleteFileFromDeliverable = async (req, res) => {
+  try {
+    const { deliverableId, fileId } = req.params;
+
+    // 1) احصل على الـ deliverable
+    const deliverable =
+      await deliverablesService.getDeliverableById(deliverableId);
+
+    if (!deliverable) {
+      return res.status(404).json({ message: "Deliverable not found" });
+    }
+
+    // 2) ابحث عن الملف
+    const file = deliverable.files.find(
+      (f) => String(f._id) === String(fileId)
+    );
+
+    if (!file) {
+      return res.status(404).json({ message: "File not found" });
+    }
+
+    // 3) حذف من Cloudinary
+    if (file.publicId) {
+      await cloudinary.uploader.destroy(file.publicId, {
+        resource_type: file.resource_type || "image",
+      });
+    }
+
+    // 4) حذف من قاعدة البيانات
+    await deliverablesService.removeFileFromDeliverable(
+      deliverableId,
+      fileId
+    );
+
+    return res.json({ message: "File deleted successfully" });
+  } catch (err) {
+    console.error("DELETE FILE ERROR:", err);
+    res.status(500).json({ message: "Failed to delete file" });
   }
 };

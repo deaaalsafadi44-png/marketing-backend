@@ -58,8 +58,29 @@ const getAllDeliverables = async (taskId) => {
   return Deliverable.find(query).sort({ createdAt: -1 });
 };
 
+/* =====================================================
+   ✅ NEW — Get deliverable by ID
+===================================================== */
+const getDeliverableById = async (deliverableId) => {
+  return Deliverable.findById(deliverableId);
+};
+
+/* =====================================================
+   ✅ NEW — Remove file from deliverable
+===================================================== */
+const removeFileFromDeliverable = async (deliverableId, fileId) => {
+  await Deliverable.updateOne(
+    { _id: deliverableId },
+    { $pull: { files: { _id: fileId } } }
+  );
+};
+
 module.exports = {
   createDeliverable,
   updateDeliverableFiles,
   getAllDeliverables,
+
+  // ✅ exports الجديدة (بدون المساس بالباقي)
+  getDeliverableById,
+  removeFileFromDeliverable,
 };
