@@ -42,8 +42,12 @@ module.exports = function authenticateToken(req, res, next) {
       });
     }
 
-    // 🔐 مهم: نخزن البيانات المفكوكة
+    // ✅ تأكيد تخزين المستخدم
     req.user = decoded;
+
+    // 🧪 LOG (مهم للاختبار)
+    // console.log("AUTH USER:", decoded);
+
     next();
   });
 };
