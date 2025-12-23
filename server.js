@@ -1,4 +1,3 @@
-// server.js
 require("dotenv").config();
 
 const express = require("express");
@@ -7,7 +6,7 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 
-// Routes (⚠️ استيراد صريح بالامتداد .js)
+// Routes
 const authRoutes = require("./routes/auth.routes.js");
 const usersRoutes = require("./routes/users.routes.js");
 const tasksRoutes = require("./routes/tasks.routes.js");
@@ -15,9 +14,6 @@ const optionsRoutes = require("./routes/options.routes.js");
 const settingsRoutes = require("./routes/settings.routes.js");
 const reportsRoutes = require("./routes/reports.routes.js");
 const deliverablesRoutes = require("./routes/deliverables.routes.js");
-
-// ✅ Cloudinary test route
-const cloudinaryTestRoutes = require("./routes/cloudinaryTest.js");
 
 const app = express();
 
@@ -63,9 +59,6 @@ app.use("/options", optionsRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
 app.use("/deliverables", deliverablesRoutes);
-
-// ✅ Cloudinary test endpoint
-app.use("/test", cloudinaryTestRoutes);
 
 /* START SERVER */
 const PORT = process.env.PORT || 5000;
