@@ -16,6 +16,9 @@ const settingsRoutes = require("./routes/settings.routes");
 const reportsRoutes = require("./routes/reports.routes");
 const deliverablesRoutes = require("./routes/deliverables.routes");
 
+// ✅ NEW: Cloudinary test route
+const cloudinaryTestRoutes = require("./routes/cloudinaryTest");
+
 const app = express();
 
 /* TRUST PROXY */
@@ -60,6 +63,9 @@ app.use("/options", optionsRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
 app.use("/deliverables", deliverablesRoutes);
+
+// ✅ NEW: Cloudinary test endpoint
+app.use("/test", cloudinaryTestRoutes);
 
 /* START SERVER */
 const PORT = process.env.PORT || 5000;
