@@ -75,12 +75,57 @@ const removeFileFromDeliverable = async (deliverableId, fileId) => {
   );
 };
 
+/* =====================================================
+   🆕 NEW — Get submissions grouped by task
+===================================================== */
+const getSubmissionsGroupedByTask = async () => {
+  const submissions = await Deliverable.aggregate([
+    {
+      $sort: { createdAt: -1 },
+    },
+    {
+      $group: {
+        _id: "$taskId",
+        taskId: { $first: "$taskId" },
+        submittedById: { $first: "$submittedById" },
+        submittedByName: { $first: "$submittedByName" },
+        createdAt: { $first: "$createdAt" },
+        files: { $push: "$files" },
+      },
+    },
+    {
+      $project: {
+        _id: 0,
+        taskId: 1,
+        submittedById: 1,
+        submittedByName: 1,
+        createdAt: 1,
+        files: {
+          $reduce: {
+            input: "$files",
+            initialValue: [],
+            in: { $concatArrays: ["$$value", "$$this"] },
+          },
+        },
+      },
+    },
+    {
+      $sort: { createdAt: -1 },
+    },
+  ]);
+
+  return submissions;
+};
+
 module.exports = {
   createDeliverable,
   updateDeliverableFiles,
   getAllDeliverables,
 
-  // ✅ exports الجديدة (بدون المساس بالباقي)
+  // ✅ exports الموجودة
   getDeliverableById,
   removeFileFromDeliverable,
+
+  // 🆕 export الجديد
+  getSubmissionsGroupedByTask,
 };

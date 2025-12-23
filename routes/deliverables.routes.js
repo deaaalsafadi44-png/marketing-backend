@@ -16,6 +16,16 @@ router.get(
 );
 
 /* =========================
+   🆕 GET SUBMISSIONS (GROUPED BY TASK)
+   GET /deliverables/submissions
+========================= */
+router.get(
+  "/submissions",
+  authenticateToken,
+  deliverablesController.getSubmissionsGroupedByTask
+);
+
+/* =========================
    CREATE DELIVERABLE
    POST /deliverables
 ========================= */

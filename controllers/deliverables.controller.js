@@ -85,14 +85,12 @@ exports.createDeliverable = async (req, res) => {
 };
 
 /* =========================
-   DELETE FILE FROM DELIVERABLE ✅ NEW
-   DELETE /deliverables/:deliverableId/files/:fileId
+   DELETE FILE FROM DELIVERABLE
 ========================= */
 exports.deleteFileFromDeliverable = async (req, res) => {
   try {
     const { deliverableId, fileId } = req.params;
 
-    // 1) احصل على الـ deliverable
     const deliverable =
       await deliverablesService.getDeliverableById(deliverableId);
 
@@ -100,7 +98,6 @@ exports.deleteFileFromDeliverable = async (req, res) => {
       return res.status(404).json({ message: "Deliverable not found" });
     }
 
-    // 2) ابحث عن الملف
     const file = deliverable.files.find(
       (f) => String(f._id) === String(fileId)
     );
@@ -109,14 +106,12 @@ exports.deleteFileFromDeliverable = async (req, res) => {
       return res.status(404).json({ message: "File not found" });
     }
 
-    // 3) حذف من Cloudinary
     if (file.publicId) {
       await cloudinary.uploader.destroy(file.publicId, {
         resource_type: file.resource_type || "image",
       });
     }
 
-    // 4) حذف من قاعدة البيانات
     await deliverablesService.removeFileFromDeliverable(
       deliverableId,
       fileId
@@ -126,5 +121,19 @@ exports.deleteFileFromDeliverable = async (req, res) => {
   } catch (err) {
     console.error("DELETE FILE ERROR:", err);
     res.status(500).json({ message: "Failed to delete file" });
+  }
+};
+
+/* ======================================================
+   🆕 GET SUBMISSIONS (GROUPED BY TASK) — NEW
+   GET /deliverables/submissions
+====================================================== */
+exports.getSubmissionsSummary = async (req, res) => {
+  try {
+    const data = await deliverablesService.getSubmissionsGroupedByTask();
+    res.json(data);
+  } catch (error) {
+    console.error("GET SUBMISSIONS ERROR:", error);
+    res.status(500).json({ message: "Failed to load submissions" });
   }
 };
