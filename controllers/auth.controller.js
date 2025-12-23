@@ -1,125 +1,83 @@
-const authService = require("../services/auth.service");
+const deliverablesService = require("../services/deliverables.service");
+const uploadToCloudinary = require("../utils/cloudinaryUpload");
 
-/* =========================
-   LOGIN (HttpOnly Cookies)
-========================= */
-const login = async (req, res) => {
-  const { email, password } = req.body;
-
-  if (!email || !password) {
-    return res.status(400).json({ message: "Missing credentials" });
+exports.getAllDeliverables = async (req, res) => {
+  try {
+    const { taskId } = req.query;
+    const data = await deliverablesService.getAllDeliverables(taskId);
+    res.json(data);
+  } catch (error) {
+    console.error("Get deliverables error:", error);
+    res.status(500).json({ message: "Failed to load deliverables" });
   }
+};
+
+exports.createDeliverable = async (req, res) => {
+  let deliverable;
 
   try {
-    const result = await authService.login(email, password);
-    if (!result) {
-      return res.status(401).json({ message: "Invalid credentials" });
+    console.log("========== NEW DELIVERABLE ==========");
+    console.log("BODY:", req.body);
+    console.log("FILES COUNT:", req.files?.length || 0);
+    console.log("USER:", req.user);
+    console.log("====================================");
+
+    const { taskId, notes } = req.body;
+
+    if (!taskId) {
+      return res.status(400).json({ message: "taskId is required" });
     }
 
-    const { accessToken, refreshToken, user } = result;
-
-    const isProd = process.env.NODE_ENV === "production";
-
-    // 🔐 Access Token
-    res.cookie("accessToken", accessToken, {
-      httpOnly: true,
-      secure: isProd,            // ✅ true في الإنتاج
-      sameSite: isProd ? "none" : "lax", // ✅ مهم جدًا للأونلاين
-      maxAge: 15 * 60 * 1000, // 15 min
+    // 1️⃣ إنشاء Deliverable بدون ملفات
+    deliverable = await deliverablesService.createDeliverable({
+      taskId: String(taskId),
+      notes: notes || "",
+      submittedById: req.user.id,
+      submittedByName: req.user.name || req.user.username || "Unknown",
+      files: [],
     });
 
-    // 🔐 Refresh Token
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
+    console.log("🧪 [CONTROLLER] deliverable =", deliverable);
+    console.log("🧪 [CONTROLLER] deliverable._id =", deliverable?._id);
 
-    // نعيد فقط المستخدم
-    res.json({ user });
+    // رد فوري للفرونت
+    res.status(201).json(deliverable);
   } catch (err) {
-    console.error("Login error:", err);
-    res.status(500).json({ message: "Login failed" });
-  }
-};
-
-/* =========================
-   REFRESH TOKEN (HttpOnly)
-========================= */
-const refreshToken = async (req, res) => {
-  const token = req.cookies?.refreshToken;
-
-  if (!token) {
-    return res.status(401).json({ message: "Missing refresh token" });
+    console.error("CREATE DELIVERABLE ERROR:", err);
+    return res.status(500).json({ message: "Server error" });
   }
 
+  // 2️⃣ رفع الملفات وربطها
   try {
-    const newAccessToken = await authService.refreshToken(token);
+    if (req.files && req.files.length > 0) {
+      const uploadedFiles = await Promise.all(
+        req.files.map(async (file) => {
+          const uploadRes = await uploadToCloudinary(file);
 
-    if (!newAccessToken) {
-      return res.status(401).json({ message: "Invalid refresh token" });
+          return {
+            url: uploadRes.secure_url,
+            publicId: uploadRes.public_id,
+            originalName: file.originalname,
+            mimeType: file.mimetype,
+            size: file.size,
+          };
+        })
+      );
+
+      console.log(
+        "🧪 [CONTROLLER] calling updateDeliverableFiles with _id =",
+        deliverable._id
+      );
+
+      // ✅✅✅ السطر المصحح
+      await deliverablesService.updateDeliverableFiles(
+        deliverable._id,
+        uploadedFiles
+      );
+
+      console.log("✅ Files uploaded & linked to deliverable");
     }
-
-    const isProd = process.env.NODE_ENV === "production";
-
-    res.cookie("accessToken", newAccessToken, {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
-      maxAge: 15 * 60 * 1000,
-    });
-
-    res.json({ message: "Token refreshed" });
-  } catch (err) {
-    console.error("Refresh token error:", err);
-    res.status(500).json({ message: "Failed to refresh token" });
+  } catch (fileErr) {
+    console.error("⚠️ FILE UPLOAD FAILED (deliverable محفوظ):", fileErr);
   }
-};
-
-/* =========================
-   LOGOUT (HttpOnly Cookies)
-========================= */
-const logout = async (req, res) => {
-  try {
-    const isProd = process.env.NODE_ENV === "production";
-
-    res.clearCookie("accessToken", {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
-    });
-
-    res.clearCookie("refreshToken", {
-      httpOnly: true,
-      secure: isProd,
-      sameSite: isProd ? "none" : "lax",
-    });
-
-    res.json({ message: "Logged out successfully" });
-  } catch (err) {
-    console.error("Logout error:", err);
-    res.status(500).json({ message: "Logout failed" });
-  }
-};
-
-/* =========================
-   GET CURRENT USER (auth/me)
-========================= */
-const getMe = async (req, res) => {
-  try {
-    res.json({
-      user: req.user,
-    });
-  } catch (err) {
-    console.error("Get me error:", err);
-    res.status(500).json({ message: "Failed to get user" });
-  }
-};
-
-module.exports = {
-  login,
-  refreshToken,
-  logout,
-  getMe,
 };

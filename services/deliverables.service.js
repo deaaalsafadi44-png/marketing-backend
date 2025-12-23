@@ -25,16 +25,10 @@ const createDeliverable = async ({
   // 🧪 LOG 1: _id موجود بعد الحفظ
   console.log("🧪 [SERVICE:createDeliverable] saved._id =", saved._id);
 
-  // ⚠️ نُبقي _id داخليًا للباك فقط
-  // لكن لا نُرجعه للواجهة
+  // ✅ لا نحذف _id لأننا نحتاجه لربط الملفات
   const plain = saved.toObject();
 
-  // ✅ الحل النهائي: خزّن id داخلياً قبل الحذف (للاستخدام في الكنترولر)
-  plain.__internalId = plain._id;
-
-  delete plain._id;
-
-  // 🧪 LOG 2: _id بعد الحذف
+  // 🧪 LOG 2: تأكيد وجود _id
   console.log("🧪 [SERVICE:createDeliverable] plain._id =", plain._id);
 
   return plain;
@@ -69,7 +63,8 @@ const updateDeliverableFiles = async (deliverableId, files) => {
 */
 const getAllDeliverables = async (taskId) => {
   const query = taskId ? { taskId: Number(taskId) } : {};
-  return Deliverable.find(query, { _id: 0 }).sort({ createdAt: -1 });
+  // ✅ لا تخفِ _id هنا أيضًا (مفيد جدًا للديباغ)
+  return Deliverable.find(query).sort({ createdAt: -1 });
 };
 
 module.exports = {
