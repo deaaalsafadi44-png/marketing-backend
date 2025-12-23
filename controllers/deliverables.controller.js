@@ -151,8 +151,11 @@ exports.rateDeliverable = async (req, res) => {
       return res.status(403).json({ message: "Not authorized to rate" });
     }
 
-    if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ message: "Rating must be between 1 and 5" });
+    // ✅ السماح بـ 0 → 5
+    if (rating === undefined || rating < 0 || rating > 5) {
+      return res
+        .status(400)
+        .json({ message: "Rating must be between 0 and 5" });
     }
 
     const updated = await deliverablesService.rateDeliverable(
