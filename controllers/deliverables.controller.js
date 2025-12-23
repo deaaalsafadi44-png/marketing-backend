@@ -54,18 +54,25 @@ exports.createDeliverable = async (req, res) => {
           const uploadRes = await uploadToCloudinary(file);
 
           return {
-            url: uploadRes.secure_url,
+            // الحقول الأصلية
+            url: uploadRes.url,
             publicId: uploadRes.public_id,
-            originalName: file.originalname,
-            mimeType: file.mimetype,
-            size: file.size,
+            originalName: uploadRes.originalName,
+
+            // الحقول الداعمة للعرض
+            mimeType: uploadRes.mimeType,
+            size: uploadRes.size,
+            resource_type: uploadRes.resource_type,
+            format: uploadRes.format,
           };
         })
       );
 
-      console.log("🧪 [CONTROLLER] linking files to deliverableId =", deliverable?._id);
+      console.log(
+        "🧪 [CONTROLLER] linking files to deliverableId =",
+        deliverable?._id
+      );
 
-      // ✅ هنا الإصلاح الأهم: استخدم _id الحقيقي
       await deliverablesService.updateDeliverableFiles(
         deliverable._id,
         uploadedFiles

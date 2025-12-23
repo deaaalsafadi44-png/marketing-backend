@@ -18,12 +18,19 @@ const uploadToCloudinary = async (file) => {
       resource_type: resourceType,
     });
 
+    // ⬇️ تمت الإضافة هنا فقط بدون حذف أي شيء
     return {
+      // الحقول الأصلية (كما هي)
       url: result.secure_url,
       originalName: file.originalname,
       mimeType: file.mimetype,
       size: file.size,
       type: resourceType,
+
+      // الحقول المضافة لدعم العرض في الفرونت
+      resource_type: result.resource_type,
+      format: result.format,
+      public_id: result.public_id,
     };
   } catch (error) {
     console.error("❌ Cloudinary upload error:", error);
