@@ -22,23 +22,39 @@ const createDeliverable = async ({
 
   const saved = await Deliverable.create(deliverable);
 
-  // Return plain object without Mongo _id
-  const { _id, ...plain } = saved.toObject();
+  // ⚠️ نُبقي _id داخليًا للباك فقط
+  // لكن لا نُرجعه للواجهة
+  const plain = saved.toObject();
+  delete plain._id;
+
   return plain;
+};
+
+/*
+  Update deliverable with uploaded files
+  ✅ الإضافة الوحيدة اللازمة لربط الملفات
+*/
+const updateDeliverableFiles = async (deliverableId, files) => {
+  if (!deliverableId) return;
+
+  await Deliverable.updateOne(
+    { _id: deliverableId },
+    { $push: { files: { $each: files } } }
+  );
 };
 
 /*
   Get all deliverables
   Used for the page that shows boxes
-  ✅ NOW supports optional taskId filtering
+  ✅ Supports optional taskId filtering
 */
 const getAllDeliverables = async (taskId) => {
   const query = taskId ? { taskId: Number(taskId) } : {};
-
   return Deliverable.find(query, { _id: 0 }).sort({ createdAt: -1 });
 };
 
 module.exports = {
   createDeliverable,
+  updateDeliverableFiles, // ✅ export الدالة الجديدة
   getAllDeliverables,
 };
