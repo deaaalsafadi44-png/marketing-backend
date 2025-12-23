@@ -1,11 +1,5 @@
 const express = require("express");
-const {
-  login,
-  refreshToken,
-  logout,
-  getMe,
-} = require("../controllers/auth.controller");
-
+const authController = require("../controllers/auth.controller");
 const authenticateToken = require("../middlewares/authenticateToken");
 
 const router = express.Router();
@@ -14,24 +8,28 @@ const router = express.Router();
    LOGIN
    POST /auth/login
 ========================= */
-router.post("/login", login);
+router.post("/login", authController.login);
 
 /* =========================
    REFRESH TOKEN
    POST /auth/refresh
 ========================= */
-router.post("/refresh", refreshToken);
+router.post("/refresh", authController.refreshToken);
 
 /* =========================
    LOGOUT
    POST /auth/logout
 ========================= */
-router.post("/logout", logout);
+router.post("/logout", authController.logout);
 
 /* =========================
    AUTH CHECK
    GET /auth/me
 ========================= */
-router.get("/me", authenticateToken, getMe);
+router.get("/me", authenticateToken, (req, res) => {
+  res.json({
+    user: req.user,
+  });
+});
 
 module.exports = router;
