@@ -15,6 +15,19 @@ const settingsRoutes = require("./routes/settings.routes.js");
 const reportsRoutes = require("./routes/reports.routes.js");
 const deliverablesRoutes = require("./routes/deliverables.routes.js");
 
+/* 🔍 DEBUG ROUTES TYPES */
+console.log("authRoutes typeof:", typeof authRoutes);
+console.log("usersRoutes typeof:", typeof usersRoutes);
+console.log("tasksRoutes typeof:", typeof tasksRoutes);
+console.log("optionsRoutes typeof:", typeof optionsRoutes);
+console.log("settingsRoutes typeof:", typeof settingsRoutes);
+console.log("reportsRoutes typeof:", typeof reportsRoutes);
+console.log("deliverablesRoutes typeof:", typeof deliverablesRoutes);
+
+console.log("authRoutes keys:", Object.keys(authRoutes || {}));
+console.log("deliverablesRoutes keys:", Object.keys(deliverablesRoutes || {}));
+/* 🔍 END DEBUG */
+
 const app = express();
 
 /* TRUST PROXY */
