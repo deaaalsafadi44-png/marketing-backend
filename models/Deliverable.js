@@ -22,21 +22,20 @@ const DeliverableSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
+files: [
+  {
+    url: { type: String, required: true },
+    originalName: { type: String, required: true },
+    publicId: { type: String, required: true },
 
-    files: [
-      {
-        // الحقول الأصلية (لم نغيّرها)
-        url: { type: String, required: true },
-        originalName: { type: String, required: true },
-        publicId: { type: String, required: true },
+    // ⭐ إضافات ضرورية للعرض
+    mimeType: { type: String },
+    resource_type: { type: String },
+    format: { type: String },
+    size: { type: Number },
+  },
+],
 
-        // ⬇️ الحقول المضافة (لدعم العرض)
-        mimeType: { type: String },
-        size: { type: Number },
-        resource_type: { type: String }, // image | video | raw
-        format: { type: String },        // png | jpg | mp4 | pdf
-      },
-    ],
   },
   { timestamps: true }
 );
