@@ -1,3 +1,4 @@
+// server.js
 require("dotenv").config();
 
 const express = require("express");
@@ -6,14 +7,17 @@ const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
 
-// Routes
-const authRoutes = require("./routes/auth.routes");
-const usersRoutes = require("./routes/users.routes");
-const tasksRoutes = require("./routes/tasks.routes");
-const optionsRoutes = require("./routes/options.routes");
-const settingsRoutes = require("./routes/settings.routes");
-const reportsRoutes = require("./routes/reports.routes");
-const deliverablesRoutes = require("./routes/deliverables.routes");
+// Routes (⚠️ استيراد صريح بالامتداد .js)
+const authRoutes = require("./routes/auth.routes.js");
+const usersRoutes = require("./routes/users.routes.js");
+const tasksRoutes = require("./routes/tasks.routes.js");
+const optionsRoutes = require("./routes/options.routes.js");
+const settingsRoutes = require("./routes/settings.routes.js");
+const reportsRoutes = require("./routes/reports.routes.js");
+const deliverablesRoutes = require("./routes/deliverables.routes.js");
+
+// ✅ Cloudinary test route
+const cloudinaryTestRoutes = require("./routes/cloudinaryTest.js");
 
 const app = express();
 
@@ -34,7 +38,7 @@ app.use(
       if (!origin || allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(null, false);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
   })
@@ -60,6 +64,9 @@ app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
 app.use("/deliverables", deliverablesRoutes);
 
+// ✅ Cloudinary test endpoint
+app.use("/test", cloudinaryTestRoutes);
+
 /* START SERVER */
 const PORT = process.env.PORT || 5000;
 
@@ -67,9 +74,9 @@ mongoose
   .connect(process.env.MONGO_URI, { dbName: "marketing_task_system" })
   .then(() => {
     console.log("MongoDB connected ✔");
-    app.listen(PORT, () =>
-      console.log(`Server running on port ${PORT}`)
-    );
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
   })
   .catch((err) => {
     console.error("MongoDB error:", err.message);
