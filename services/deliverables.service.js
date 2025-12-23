@@ -12,7 +12,7 @@ const createDeliverable = async ({
   files = [],
 }) => {
   const deliverable = {
-    taskId,
+    taskId: String(taskId), // ✅ توحيد النوع
     submittedById,
     submittedByName,
     notes: notes || "",
@@ -40,11 +40,19 @@ const createDeliverable = async ({
 */
 const updateDeliverableFiles = async (deliverableId, files) => {
   // 🧪 LOG 3: ما الذي يصل للدالة
-  console.log("🧪 [SERVICE:updateDeliverableFiles] deliverableId =", deliverableId);
-  console.log("🧪 [SERVICE:updateDeliverableFiles] files.length =", files?.length);
+  console.log(
+    "🧪 [SERVICE:updateDeliverableFiles] deliverableId =",
+    deliverableId
+  );
+  console.log(
+    "🧪 [SERVICE:updateDeliverableFiles] files.length =",
+    files?.length
+  );
 
   if (!deliverableId) {
-    console.log("❌ [SERVICE:updateDeliverableFiles] NO deliverableId → update skipped");
+    console.log(
+      "❌ [SERVICE:updateDeliverableFiles] NO deliverableId → update skipped"
+    );
     return;
   }
 
@@ -62,8 +70,7 @@ const updateDeliverableFiles = async (deliverableId, files) => {
   ✅ Supports optional taskId filtering
 */
 const getAllDeliverables = async (taskId) => {
-  const query = taskId ? { taskId: Number(taskId) } : {};
-  // ✅ لا تخفِ _id هنا أيضًا (مفيد جدًا للديباغ)
+  const query = taskId ? { taskId: String(taskId) } : {}; // ✅ التعديل المهم
   return Deliverable.find(query).sort({ createdAt: -1 });
 };
 
