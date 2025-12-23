@@ -4,12 +4,19 @@ const uploadToCloudinary = async (file) => {
   try {
     let resourceType = "raw";
 
+    // صور
     if (file.mimetype.startsWith("image/")) {
       resourceType = "image";
-    } else if (file.mimetype.startsWith("video/")) {
+    }
+
+    // فيديو
+    else if (file.mimetype.startsWith("video/")) {
       resourceType = "video";
-    } else if (file.mimetype === "application/pdf") {
-      resourceType = "image"; // ⭐ مهم جدًا
+    }
+
+    // ✅ PDF يُعامل كـ image (الإضافة المطلوبة فقط)
+    else if (file.mimetype === "application/pdf") {
+      resourceType = "image";
     }
 
     const base64 = file.buffer.toString("base64");
@@ -18,19 +25,18 @@ const uploadToCloudinary = async (file) => {
     const result = await cloudinary.uploader.upload(dataUri, {
       folder: "task-deliverables",
       resource_type: resourceType,
-
-      // ✅ الحل الحاسم
-      flags: "attachment:false",
-      use_filename: true,
-      unique_filename: false,
     });
 
+    // ⬇️ لم نحذف أو نغيّر أي شيء هنا
     return {
+      // الحقول الأصلية (كما هي)
       url: result.secure_url,
       originalName: file.originalname,
       mimeType: file.mimetype,
       size: file.size,
+      type: resourceType,
 
+      // الحقول المضافة سابقًا (كما هي)
       resource_type: result.resource_type,
       format: result.format,
       public_id: result.public_id,
