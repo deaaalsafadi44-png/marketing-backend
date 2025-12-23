@@ -3,7 +3,10 @@ const uploadToCloudinary = require("../utils/cloudinaryUpload");
 
 exports.getAllDeliverables = async (req, res) => {
   try {
-    const data = await deliverablesService.getAllDeliverables();
+    // ✅ قراءة taskId من query
+    const { taskId } = req.query;
+
+    const data = await deliverablesService.getAllDeliverables(taskId);
     res.json(data);
   } catch (error) {
     console.error("Get deliverables error:", error);
@@ -36,6 +39,10 @@ exports.createDeliverable = async (req, res) => {
       files: [],
     });
 
+    // 🧪 LOG 4: ما الذي عاد من السيرفس
+    console.log("🧪 [CONTROLLER] deliverable =", deliverable);
+    console.log("🧪 [CONTROLLER] deliverable._id =", deliverable?._id);
+
     // ✅ رد فوري للواجهة (لا ننتظر Cloudinary)
     res.status(201).json(deliverable);
   } catch (err) {
@@ -62,11 +69,18 @@ exports.createDeliverable = async (req, res) => {
         })
       );
 
+      // 🧪 LOG 5: قبل التحديث
+      console.log(
+        "🧪 [CONTROLLER] calling updateDeliverableFiles with _id =",
+        deliverable?._id
+      );
+
       // ✅ تحديث التسليم بالملفات
       await deliverablesService.updateDeliverableFiles(
-        deliverable._id,
-        uploadedFiles
-      );
+  deliverable.deliverableId,
+  uploadedFiles
+);
+
 
       console.log("✅ Files uploaded & linked to deliverable");
     }

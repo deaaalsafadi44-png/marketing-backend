@@ -28,10 +28,17 @@ const createDeliverable = async ({
   // ⚠️ نُبقي _id داخليًا للباك فقط
   // لكن لا نُرجعه للواجهة
   const plain = saved.toObject();
+
+  // ✅ الإضافة الوحيدة (الحل)
+  plain.deliverableId = saved._id;
+
   delete plain._id;
 
-  // 🧪 LOG 2: _id بعد الحذف
-  console.log("🧪 [SERVICE:createDeliverable] plain._id =", plain._id);
+  // 🧪 LOG 2: التحقق من الـ ID بعد التعديل
+  console.log(
+    "🧪 [SERVICE:createDeliverable] returned deliverableId =",
+    plain.deliverableId
+  );
 
   return plain;
 };
