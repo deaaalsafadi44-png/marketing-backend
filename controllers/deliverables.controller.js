@@ -39,7 +39,7 @@ exports.createDeliverable = async (req, res) => {
 
     console.log("🧪 [CONTROLLER] deliverable._id =", deliverable?._id);
 
-    // ✅ رد فوري للواجهة (لا ننتظر Cloudinary)
+    // ✅ رد فوري للواجهة
     res.status(201).json(deliverable);
   } catch (err) {
     console.error("CREATE DELIVERABLE ERROR:", err);
@@ -54,14 +54,13 @@ exports.createDeliverable = async (req, res) => {
           const uploadRes = await uploadToCloudinary(file);
 
           return {
-            // الحقول الأصلية
             url: uploadRes.url,
             publicId: uploadRes.public_id,
             originalName: uploadRes.originalName,
-
-            // الحقول الداعمة للعرض
             mimeType: uploadRes.mimeType,
             size: uploadRes.size,
+
+            // ⭐ الحقول الحاسمة التي يعتمد عليها الفرونت
             resource_type: uploadRes.resource_type,
             format: uploadRes.format,
           };
@@ -82,6 +81,5 @@ exports.createDeliverable = async (req, res) => {
     }
   } catch (fileErr) {
     console.error("⚠️ FILE UPLOAD FAILED (deliverable محفوظ):", fileErr);
-    // لا نرمي error لأن التسليم محفوظ
   }
 };
