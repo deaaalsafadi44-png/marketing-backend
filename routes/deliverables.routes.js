@@ -6,6 +6,17 @@ const upload = require("../middlewares/upload"); // ✅ موجود كما هو
 const router = express.Router();
 
 /* =========================
+   🆕 GET SUBMISSIONS (GROUPED BY TASK)
+   GET /deliverables/submissions
+   ⚠️ يجب أن يكون قبل "/"
+========================= */
+router.get(
+  "/submissions",
+  authenticateToken,
+  deliverablesController.getSubmissionsSummary
+);
+
+/* =========================
    GET ALL DELIVERABLES
    GET /deliverables?taskId=...
 ========================= */
@@ -13,16 +24,6 @@ router.get(
   "/",
   authenticateToken,
   deliverablesController.getAllDeliverables
-);
-
-/* =========================
-   🆕 GET SUBMISSIONS (GROUPED BY TASK)
-   GET /deliverables/submissions
-========================= */
-router.get(
-  "/submissions",
-  authenticateToken,
-  deliverablesController.getSubmissionsGroupedByTask
 );
 
 /* =========================
@@ -37,7 +38,7 @@ router.post(
 );
 
 /* =========================
-   DELETE FILE FROM DELIVERABLE ✅ (NEW)
+   DELETE FILE FROM DELIVERABLE
    DELETE /deliverables/:deliverableId/files/:fileId
 ========================= */
 router.delete(
