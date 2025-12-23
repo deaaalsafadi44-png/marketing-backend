@@ -25,6 +25,9 @@ const uploadToCloudinary = async (file) => {
     const result = await cloudinary.uploader.upload(dataUri, {
       folder: "task-deliverables",
       resource_type: resourceType,
+
+      // ⭐ الإضافة الوحيدة الضرورية (بدون تغيير أي منطق)
+      type: "upload",
     });
 
     // ⬇️ لم نحذف أو نغيّر أي شيء هنا
