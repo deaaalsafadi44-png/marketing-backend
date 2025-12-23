@@ -22,10 +22,16 @@ const createDeliverable = async ({
 
   const saved = await Deliverable.create(deliverable);
 
+  // 🧪 LOG 1: _id موجود بعد الحفظ
+  console.log("🧪 [SERVICE:createDeliverable] saved._id =", saved._id);
+
   // ⚠️ نُبقي _id داخليًا للباك فقط
   // لكن لا نُرجعه للواجهة
   const plain = saved.toObject();
   delete plain._id;
+
+  // 🧪 LOG 2: _id بعد الحذف
+  console.log("🧪 [SERVICE:createDeliverable] plain._id =", plain._id);
 
   return plain;
 };
@@ -35,12 +41,21 @@ const createDeliverable = async ({
   ✅ الإضافة الوحيدة اللازمة لربط الملفات
 */
 const updateDeliverableFiles = async (deliverableId, files) => {
-  if (!deliverableId) return;
+  // 🧪 LOG 3: ما الذي يصل للدالة
+  console.log("🧪 [SERVICE:updateDeliverableFiles] deliverableId =", deliverableId);
+  console.log("🧪 [SERVICE:updateDeliverableFiles] files.length =", files?.length);
+
+  if (!deliverableId) {
+    console.log("❌ [SERVICE:updateDeliverableFiles] NO deliverableId → update skipped");
+    return;
+  }
 
   await Deliverable.updateOne(
     { _id: deliverableId },
     { $push: { files: { $each: files } } }
   );
+
+  console.log("✅ [SERVICE:updateDeliverableFiles] Mongo update executed");
 };
 
 /*
@@ -55,6 +70,6 @@ const getAllDeliverables = async (taskId) => {
 
 module.exports = {
   createDeliverable,
-  updateDeliverableFiles, // ✅ export الدالة الجديدة
+  updateDeliverableFiles,
   getAllDeliverables,
 };
