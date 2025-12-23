@@ -22,20 +22,45 @@ const DeliverableSchema = new mongoose.Schema(
       type: String,
       default: "",
     },
-files: [
-  {
-    url: { type: String, required: true },
-    originalName: { type: String, required: true },
-    publicId: { type: String, required: true },
 
-    // ⭐ إضافات ضرورية للعرض
-    mimeType: { type: String },
-    resource_type: { type: String },
-    format: { type: String },
-    size: { type: Number },
-  },
-],
+    files: [
+      {
+        url: { type: String, required: true },
+        originalName: { type: String, required: true },
+        publicId: { type: String, required: true },
 
+        // ⭐ إضافات ضرورية للعرض
+        mimeType: { type: String },
+        resource_type: { type: String },
+        format: { type: String },
+        size: { type: Number },
+      },
+    ],
+
+    /* =====================================================
+       ⭐ NEW — RATING SYSTEM (Admin / Manager)
+    ===================================================== */
+    rating: {
+      type: Number,
+      min: 0,
+      max: 5,
+      default: 0,
+    },
+
+    ratedById: {
+      type: Number,
+      default: null,
+    },
+
+    ratedByName: {
+      type: String,
+      default: null,
+    },
+
+    ratedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );

@@ -125,8 +125,7 @@ exports.deleteFileFromDeliverable = async (req, res) => {
 };
 
 /* ======================================================
-   🆕 GET SUBMISSIONS (GROUPED BY TASK) — NEW
-   GET /deliverables/submissions
+   🆕 GET SUBMISSIONS (GROUPED BY TASK)
 ====================================================== */
 exports.getSubmissionsSummary = async (req, res) => {
   try {
@@ -135,5 +134,36 @@ exports.getSubmissionsSummary = async (req, res) => {
   } catch (error) {
     console.error("GET SUBMISSIONS ERROR:", error);
     res.status(500).json({ message: "Failed to load submissions" });
+  }
+};
+
+/* ======================================================
+   ⭐ RATE DELIVERABLE (ADMIN / MANAGER ONLY)
+   POST /deliverables/:deliverableId/rate
+====================================================== */
+exports.rateDeliverable = async (req, res) => {
+  try {
+    const { deliverableId } = req.params;
+    const { rating } = req.body;
+
+    // صلاحيات
+    if (!["admin", "manager"].includes(req.user.role)) {
+      return res.status(403).json({ message: "Not authorized to rate" });
+    }
+
+    if (!rating || rating < 1 || rating > 5) {
+      return res.status(400).json({ message: "Rating must be between 1 and 5" });
+    }
+
+    const updated = await deliverablesService.rateDeliverable(
+      deliverableId,
+      rating,
+      req.user
+    );
+
+    res.json(updated);
+  } catch (error) {
+    console.error("RATE DELIVERABLE ERROR:", error);
+    res.status(500).json({ message: "Failed to rate deliverable" });
   }
 };

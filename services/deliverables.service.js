@@ -80,9 +80,7 @@ const removeFileFromDeliverable = async (deliverableId, fileId) => {
 ===================================================== */
 const getSubmissionsGroupedByTask = async () => {
   const submissions = await Deliverable.aggregate([
-    {
-      $sort: { createdAt: -1 },
-    },
+    { $sort: { createdAt: -1 } },
     {
       $group: {
         _id: "$taskId",
@@ -91,6 +89,9 @@ const getSubmissionsGroupedByTask = async () => {
         submittedByName: { $first: "$submittedByName" },
         createdAt: { $first: "$createdAt" },
         files: { $push: "$files" },
+        rating: { $first: "$rating" },
+        ratedById: { $first: "$ratedById" },
+        ratedByName: { $first: "$ratedByName" },
       },
     },
     {
@@ -100,6 +101,9 @@ const getSubmissionsGroupedByTask = async () => {
         submittedById: 1,
         submittedByName: 1,
         createdAt: 1,
+        rating: 1,
+        ratedById: 1,
+        ratedByName: 1,
         files: {
           $reduce: {
             input: "$files",
@@ -109,12 +113,37 @@ const getSubmissionsGroupedByTask = async () => {
         },
       },
     },
-    {
-      $sort: { createdAt: -1 },
-    },
+    { $sort: { createdAt: -1 } },
   ]);
 
   return submissions;
+};
+
+/* =====================================================
+   ⭐ NEW — Rate Deliverable (Admin / Manager)
+===================================================== */
+const rateDeliverable = async (deliverableId, rating, rater) => {
+  const deliverable = await Deliverable.findById(deliverableId);
+
+  if (!deliverable) {
+    throw new Error("Deliverable not found");
+  }
+
+  let finalRating = rating;
+
+  // ⭐ إذا ضغط نفس التقييم → نقص واحد
+  if (deliverable.rating === rating) {
+    finalRating = Math.max(rating - 1, 1);
+  }
+
+  deliverable.rating = finalRating;
+  deliverable.ratedById = rater.id;
+  deliverable.ratedByName = rater.name || rater.username || "Admin";
+  deliverable.ratedAt = new Date();
+
+  await deliverable.save();
+
+  return deliverable;
 };
 
 module.exports = {
@@ -125,7 +154,8 @@ module.exports = {
   // ✅ exports الموجودة
   getDeliverableById,
   removeFileFromDeliverable,
-
-  // 🆕 export الجديد
   getSubmissionsGroupedByTask,
+
+  // ⭐ export الجديد
+  rateDeliverable,
 };

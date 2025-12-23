@@ -17,6 +17,16 @@ router.get(
 );
 
 /* =========================
+   ⭐ RATE DELIVERABLE (ADMIN / MANAGER)
+   POST /deliverables/:deliverableId/rate
+========================= */
+router.post(
+  "/:deliverableId/rate",
+  authenticateToken,
+  deliverablesController.rateDeliverable
+);
+
+/* =========================
    GET ALL DELIVERABLES
    GET /deliverables?taskId=...
 ========================= */
