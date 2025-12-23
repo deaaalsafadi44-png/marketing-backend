@@ -30,9 +30,12 @@ const createDeliverable = async ({
 /*
   Get all deliverables
   Used for the page that shows boxes
+  ✅ NOW supports optional taskId filtering
 */
-const getAllDeliverables = async () => {
-  return Deliverable.find({}, { _id: 0 }).sort({ createdAt: -1 });
+const getAllDeliverables = async (taskId) => {
+  const query = taskId ? { taskId: Number(taskId) } : {};
+
+  return Deliverable.find(query, { _id: 0 }).sort({ createdAt: -1 });
 };
 
 module.exports = {
