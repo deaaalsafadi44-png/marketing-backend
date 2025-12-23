@@ -12,7 +12,7 @@ const createDeliverable = async ({
   files = [],
 }) => {
   const deliverable = {
-    taskId,
+    taskId: String(taskId),
     submittedById,
     submittedByName,
     notes: notes || "",
@@ -22,24 +22,17 @@ const createDeliverable = async ({
 
   const saved = await Deliverable.create(deliverable);
 
-  // 🧪 LOG 1: _id موجود بعد الحفظ
+  // 🧪 LOG: _id موجود بعد الحفظ
   console.log("🧪 [SERVICE:createDeliverable] saved._id =", saved._id);
 
   // ✅ لا نحذف _id لأننا نحتاجه لربط الملفات
-  const plain = saved.toObject();
-
-  // 🧪 LOG 2: تأكيد وجود _id
-  console.log("🧪 [SERVICE:createDeliverable] plain._id =", plain._id);
-
-  return plain;
+  return saved.toObject();
 };
 
 /*
   Update deliverable with uploaded files
-  ✅ الإضافة الوحيدة اللازمة لربط الملفات
 */
 const updateDeliverableFiles = async (deliverableId, files) => {
-  // 🧪 LOG 3: ما الذي يصل للدالة
   console.log("🧪 [SERVICE:updateDeliverableFiles] deliverableId =", deliverableId);
   console.log("🧪 [SERVICE:updateDeliverableFiles] files.length =", files?.length);
 
@@ -58,12 +51,10 @@ const updateDeliverableFiles = async (deliverableId, files) => {
 
 /*
   Get all deliverables
-  Used for the page that shows boxes
   ✅ Supports optional taskId filtering
 */
 const getAllDeliverables = async (taskId) => {
-  const query = taskId ? { taskId: Number(taskId) } : {};
-  // ✅ لا تخفِ _id هنا أيضًا (مفيد جدًا للديباغ)
+  const query = taskId ? { taskId: String(taskId) } : {};
   return Deliverable.find(query).sort({ createdAt: -1 });
 };
 
