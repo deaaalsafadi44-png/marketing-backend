@@ -48,13 +48,39 @@ router.put(
 );
 
 /* =========================
-   SAVE TIME
+   SAVE TIME (LEGACY)
    PUT /tasks/:id/time
 ========================= */
 router.put(
   "/:id/time",
   authenticateToken,
   tasksController.saveTaskTime
+);
+
+/* =====================================================
+   ⭐ TIMER ROUTES (NEW)
+   Start / Pause / Resume
+===================================================== */
+
+/* START TIMER */
+router.post(
+  "/:id/timer/start",
+  authenticateToken,
+  tasksController.startTaskTimer
+);
+
+/* PAUSE TIMER */
+router.post(
+  "/:id/timer/pause",
+  authenticateToken,
+  tasksController.pauseTaskTimer
+);
+
+/* RESUME TIMER */
+router.post(
+  "/:id/timer/resume",
+  authenticateToken,
+  tasksController.resumeTaskTimer
 );
 
 /* =========================

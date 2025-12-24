@@ -2,7 +2,7 @@ const tasksService = require("../services/tasks.service");
 
 /* =========================
    CREATE TASK
-   ========================= */
+========================= */
 const createTask = async (req, res) => {
   try {
     const task = await tasksService.createTask(req.body);
@@ -15,7 +15,7 @@ const createTask = async (req, res) => {
 
 /* =========================
    GET ALL TASKS
-   ========================= */
+========================= */
 const getAllTasks = async (req, res) => {
   try {
     const tasks = await tasksService.getAllTasks(req.user);
@@ -28,7 +28,7 @@ const getAllTasks = async (req, res) => {
 
 /* =========================
    GET TASK BY ID
-   ========================= */
+========================= */
 const getTaskById = async (req, res) => {
   const taskId = Number(req.params.id);
   if (isNaN(taskId))
@@ -43,7 +43,7 @@ const getTaskById = async (req, res) => {
 
 /* =========================
    UPDATE TASK
-   ========================= */
+========================= */
 const updateTask = async (req, res) => {
   const taskId = Number(req.params.id);
   if (isNaN(taskId))
@@ -57,8 +57,9 @@ const updateTask = async (req, res) => {
 };
 
 /* =========================
-   SAVE TASK TIME
-   ========================= */
+   SAVE TASK TIME (LEGACY)
+   ⚠️ نتركه كما هو
+========================= */
 const saveTaskTime = async (req, res) => {
   const taskId = Number(req.params.id);
   if (isNaN(taskId))
@@ -75,9 +76,60 @@ const saveTaskTime = async (req, res) => {
   res.json(updated);
 };
 
+/* =====================================================
+   ⭐ NEW — START TASK TIMER
+   POST /tasks/:id/timer/start
+===================================================== */
+const startTaskTimer = async (req, res) => {
+  const taskId = Number(req.params.id);
+  if (isNaN(taskId))
+    return res.status(400).json({ message: "Invalid task id" });
+
+  const updated = await tasksService.startTaskTimer(taskId);
+
+  if (!updated)
+    return res.status(404).json({ message: "Task not found" });
+
+  res.json(updated);
+};
+
+/* =====================================================
+   ⭐ NEW — PAUSE TASK TIMER
+   POST /tasks/:id/timer/pause
+===================================================== */
+const pauseTaskTimer = async (req, res) => {
+  const taskId = Number(req.params.id);
+  if (isNaN(taskId))
+    return res.status(400).json({ message: "Invalid task id" });
+
+  const updated = await tasksService.pauseTaskTimer(taskId);
+
+  if (!updated)
+    return res.status(404).json({ message: "Task not found" });
+
+  res.json(updated);
+};
+
+/* =====================================================
+   ⭐ NEW — RESUME TASK TIMER
+   POST /tasks/:id/timer/resume
+===================================================== */
+const resumeTaskTimer = async (req, res) => {
+  const taskId = Number(req.params.id);
+  if (isNaN(taskId))
+    return res.status(400).json({ message: "Invalid task id" });
+
+  const updated = await tasksService.resumeTaskTimer(taskId);
+
+  if (!updated)
+    return res.status(404).json({ message: "Task not found" });
+
+  res.json(updated);
+};
+
 /* =========================
    DELETE TASK
-   ========================= */
+========================= */
 const deleteTask = async (req, res) => {
   const taskId = Number(req.params.id);
   if (isNaN(taskId))
@@ -97,4 +149,9 @@ module.exports = {
   updateTask,
   saveTaskTime,
   deleteTask,
+
+  // ⭐ NEW EXPORTS
+  startTaskTimer,
+  pauseTaskTimer,
+  resumeTaskTimer,
 };

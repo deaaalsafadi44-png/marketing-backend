@@ -13,6 +13,18 @@ const TaskSchema = new mongoose.Schema(
     workerName: String,
     timeSpent: Number,
     createdAt: String,
+
+    /* =====================================================
+       ⭐ NEW — PROFESSIONAL TIMER (Start / Pause / Resume)
+       ✅ بدون تغيير أي منطق قديم — فقط إضافة حقول جديدة
+    ===================================================== */
+    timer: {
+      totalSeconds: { type: Number, default: 0 }, // مجموع الوقت المثبت
+      isRunning: { type: Boolean, default: false }, // هل التايمر شغال
+      startedAt: { type: Date, default: null }, // آخر وقت بدأ فيه (أو تم Resume)
+      pausedAt: { type: Date, default: null }, // آخر وقت Pause
+      lastUpdatedAt: { type: Date, default: null }, // للتتبع/الحماية
+    },
   },
   { versionKey: false }
 );
