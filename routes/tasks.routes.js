@@ -39,11 +39,12 @@ router.get(
 /* =========================
    UPDATE TASK
    PUT /tasks/:id
+   ✅ تم إزالة authorize هنا للسماح للموظف بالوصول، 
+   والتحقق يتم داخل Controller للسماح له بتعديل الحالة فقط.
 ========================= */
 router.put(
   "/:id",
   authenticateToken,
-  authorize(["Admin", "Manager"]),
   tasksController.updateTask
 );
 

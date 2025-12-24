@@ -42,18 +42,54 @@ const getTaskById = async (req, res) => {
 };
 
 /* =========================
-   UPDATE TASK
+   UPDATE TASK (MODIFIED)
 ========================= */
 const updateTask = async (req, res) => {
   const taskId = Number(req.params.id);
   if (isNaN(taskId))
     return res.status(400).json({ message: "Invalid task id" });
 
-  const updated = await tasksService.updateTask(taskId, req.body);
-  if (!updated)
-    return res.status(404).json({ message: "Task not found" });
+  try {
+    // 1. جلب المهمة الأصلية من قاعدة البيانات للتأكد من الموظف المسند إليه
+    const existingTask = await tasksService.getTaskById(taskId);
+    if (!existingTask)
+      return res.status(404).json({ message: "Task not found" });
 
-  res.json(updated);
+    const userRole = req.user?.role;
+    const userId = req.user?.id; // أو الاسم حسب نظام التوثيق لديك
+
+    // 2. تحديد ما إذا كان المستخدم أدمن أو مدير
+    const isAdminOrManager = userRole === "Admin" || userRole === "Manager";
+    
+    // 3. تحديد ما إذا كانت المهمة مسندة لهذا المستخدم
+    const isAssignedWorker = existingTask.workerId === userId || existingTask.workerName === req.user?.username;
+
+    let dataToUpdate = {};
+
+    if (isAdminOrManager) {
+      // الأدمن والمدير يمكنهم تعديل كل شيء
+      dataToUpdate = req.body;
+    } else if (isAssignedWorker) {
+      // الموظف المسند إليه المهمة يمكنه تعديل الحالة فقط
+      // نقوم باستخراج الحالة فقط من الجسم المرسل وتجاهل أي شيء آخر
+      if (req.body.status) {
+        dataToUpdate = { status: req.body.status };
+      } else {
+        return res.status(400).json({ message: "You can only update the status of this task" });
+      }
+    } else {
+      // أي شخص آخر ليس له صلاحية
+      return res.status(403).json({ message: "You don't have permission to update this task" });
+    }
+
+    // 4. تنفيذ التحديث بالبيانات المسموح بها فقط
+    const updated = await tasksService.updateTask(taskId, dataToUpdate);
+    res.json(updated);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to update task" });
+  }
 };
 
 /* =========================
