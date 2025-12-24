@@ -147,9 +147,11 @@ exports.rateDeliverable = async (req, res) => {
     const { rating } = req.body;
 
     // صلاحيات
-    if (!["admin", "manager"].includes(req.user.role)) {
-      return res.status(403).json({ message: "Not authorized to rate" });
-    }
+  const role = (req.user.role || "").toLowerCase();
+
+if (!["admin", "manager"].includes(role)) {
+  return res.status(403).json({ message: "Not authorized to rate" });
+}
 
     // ✅ السماح بـ 0 → 5
     if (rating === undefined || rating < 0 || rating > 5) {
