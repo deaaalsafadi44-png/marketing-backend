@@ -21,14 +21,22 @@ const createTask = async (data) => {
 /* =========================
    GET ALL TASKS
 ========================= */
+/* =========================
+   GET ALL TASKS (مع كود التنظيف المؤقت)
+========================= */
 const getAllTasks = async (user) => {
+  // 🧹 كود التنظيف المؤقت: يمسح أي مرفق ليس له مهمة (تاسك) موجودة حالياً
+  const allTasks = await Task.find({}, { id: 1 });
+  const taskIds = allTasks.map(t => t.id);
+  await Deliverable.deleteMany({ taskId: { $nin: taskIds } }); 
+  // -------------------------------------------------------
+
   if (user.role === "Employee") {
     return await Task.find({ workerId: user.id }, { _id: 0 });
   }
 
   return await Task.find({}, { _id: 0 });
 };
-
 /* =========================
    GET TASK BY ID
 ========================= */
