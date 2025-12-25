@@ -1,5 +1,6 @@
 const Task = require("../models/Task");
 const User = require("../models/User");
+const Submission = require("../models/Submission"); // ⭐ تم إضافة استيراد موديل التسليمات
 
 /* =========================
    CREATE TASK
@@ -117,9 +118,13 @@ const resumeTaskTimer = async (taskId) => {
 };
 
 /* =========================
-   DELETE TASK
+   DELETE TASK (MODIFIED)
 ========================= */
 const deleteTask = async (taskId) => {
+  // 1. حذف جميع المرفقات/التسليمات المرتبطة بهذا الـ taskId أولاً
+  await Submission.deleteMany({ taskId: taskId }); 
+  
+  // 2. ثم حذف المهمة نفسها
   return await Task.findOneAndDelete({ id: taskId });
 };
 
