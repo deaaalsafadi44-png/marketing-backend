@@ -135,7 +135,24 @@ const resumeTaskTimer = async (taskId) => {
   // المنطق الموحد للـ Resume هو نفسه الـ Start لضمان عدم تصفير البيانات
   return await startTaskTimer(taskId);
 };
+/* =====================================================
+   ⭐ RESET TASK TIMER (NEW)
+   تصفير العداد تماماً في قاعدة البيانات
+==================================================== */
+const resetTaskTimer = async (taskId) => {
+  const task = await Task.findOne({ id: taskId });
+  if (!task) return null;
 
+  // إعادة ضبط كائن التايمر للقيم الابتدائية
+  task.timer.totalSeconds = 0;
+  task.timer.isRunning = false;
+  task.timer.startedAt = null;
+  task.timer.pausedAt = null;
+  task.timer.lastUpdatedAt = new Date();
+
+  await task.save();
+  return task.toObject();
+};
 /* =========================
    DELETE TASK (MODIFIED)
 ========================= */
@@ -159,4 +176,5 @@ module.exports = {
   startTaskTimer,
   pauseTaskTimer,
   resumeTaskTimer,
+  resetTaskTimer,
 };

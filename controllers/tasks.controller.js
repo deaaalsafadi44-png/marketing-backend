@@ -162,7 +162,27 @@ const resumeTaskTimer = async (req, res) => {
 
   res.json(updated);
 };
+/* =====================================================
+    ⭐ NEW — RESET TASK TIMER
+    POST /tasks/:id/timer/reset
+===================================================== */
+const resetTaskTimer = async (req, res) => {
+  const taskId = Number(req.params.id);
+  if (isNaN(taskId))
+    return res.status(400).json({ message: "Invalid task id" });
 
+  try {
+    const updated = await tasksService.resetTaskTimer(taskId);
+
+    if (!updated)
+      return res.status(404).json({ message: "Task not found" });
+
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to reset timer" });
+  }
+};
 /* =========================
    DELETE TASK
 ========================= */
@@ -190,4 +210,5 @@ module.exports = {
   startTaskTimer,
   pauseTaskTimer,
   resumeTaskTimer,
+  resetTaskTimer,
 };

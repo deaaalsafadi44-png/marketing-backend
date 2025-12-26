@@ -83,6 +83,12 @@ router.post(
   authenticateToken,
   tasksController.resumeTaskTimer
 );
+/* RESET TIMER */
+router.post(
+  "/:id/timer/reset",
+  authenticateToken,
+  tasksController.resetTaskTimer
+);
 
 /* =========================
    DELETE TASK
