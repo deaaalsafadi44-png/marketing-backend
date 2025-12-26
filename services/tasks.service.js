@@ -2,6 +2,20 @@ const Task = require("../models/Task");
 const User = require("../models/User");
 const Deliverable = require("../models/Deliverable"); // ✅ تم التعديل لاستدعاء الموديل الصحيح الموجود في كودك
 
+// ⭐ دالة مساعدة (Helper) لحساب الوقت الحي لضمان المزامنة بين الأجهزة
+// هذه الدالة لا تغير البيانات في القاعدة، بل تحسب الوقت الفعلي للعرض فقط
+const calculateLiveTime = (task) => {
+  if (task && task.timer && task.timer.isRunning && task.timer.startedAt) {
+    const now = new Date();
+    const startTime = new Date(task.timer.startedAt);
+    const diffSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+    
+    // نحدث القيمة للعرض فقط دون عمل save هنا
+    task.timer.totalSeconds += diffSeconds;
+  }
+  return task;
+};
+
 /* =========================
    CREATE TASK
 ========================= */
@@ -21,20 +35,31 @@ const createTask = async (data) => {
 /* =========================
    GET ALL TASKS
 ========================= */
-
 const getAllTasks = async (user) => {
+  let tasks;
   if (user.role === "Employee") {
-    return await Task.find({ workerId: user.id }, { _id: 0 });
+    tasks = await Task.find({ workerId: user.id }, { _id: 0 });
+  } else {
+    tasks = await Task.find({}, { _id: 0 });
   }
 
-  return await Task.find({}, { _id: 0 });
+  // مخرجات معدلة لضمان ظهور الوقت الصحيح في القائمة حتى لو التايمر يعمل
+  return tasks.map(task => {
+    const taskObj = task.toObject();
+    return calculateLiveTime(taskObj);
+  });
 };
 
 /* =========================
    GET TASK BY ID
 ========================= */
 const getTaskById = async (taskId) => {
-  return await Task.findOne({ id: taskId }, { _id: 0 });
+  const task = await Task.findOne({ id: taskId }, { _id: 0 });
+  if (!task) return null;
+
+  // تحويل لـ Object وحساب الوقت الحي قبل الإرسال للفرونت إيند
+  const taskObj = task.toObject();
+  return calculateLiveTime(taskObj);
 };
 
 /* =========================
@@ -61,36 +86,38 @@ const saveTaskTime = async (taskId, timeSpent) => {
 };
 
 /* =====================================================
-   ⭐ START TASK TIMER
+   ⭐ START TASK TIMER (MODIFIED FOR SYNC)
 ===================================================== */
 const startTaskTimer = async (taskId) => {
   const task = await Task.findOne({ id: taskId });
   if (!task) return null;
 
-  if (task.timer.isRunning) return task;
+  if (task.timer.isRunning) return calculateLiveTime(task.toObject());
 
   task.timer.isRunning = true;
   task.timer.startedAt = new Date();
   task.timer.lastUpdatedAt = new Date();
 
   await task.save();
-  return task;
+  return calculateLiveTime(task.toObject());
 };
 
 /* =====================================================
-   ⭐ PAUSE TASK TIMER
+   ⭐ PAUSE TASK TIMER (MODIFIED FOR SYNC)
 ===================================================== */
 const pauseTaskTimer = async (taskId) => {
   const task = await Task.findOne({ id: taskId });
   if (!task) return null;
 
-  if (!task.timer.isRunning || !task.timer.startedAt) return task;
+  if (!task.timer.isRunning || !task.timer.startedAt) {
+    return calculateLiveTime(task.toObject());
+  }
 
   const now = new Date();
-  const diffSeconds = Math.floor(
-    (now.getTime() - task.timer.startedAt.getTime()) / 1000
-  );
+  const startTime = new Date(task.timer.startedAt);
+  const diffSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
 
+  // تثبيت الوقت المستهلك في القاعدة
   task.timer.totalSeconds += diffSeconds;
   task.timer.isRunning = false;
   task.timer.pausedAt = now;
@@ -98,24 +125,15 @@ const pauseTaskTimer = async (taskId) => {
   task.timer.lastUpdatedAt = now;
 
   await task.save();
-  return task;
+  return task.toObject();
 };
 
 /* =====================================================
    ⭐ RESUME TASK TIMER
 ===================================================== */
 const resumeTaskTimer = async (taskId) => {
-  const task = await Task.findOne({ id: taskId });
-  if (!task) return null;
-
-  if (task.timer.isRunning) return task;
-
-  task.timer.isRunning = true;
-  task.timer.startedAt = new Date();
-  task.timer.lastUpdatedAt = new Date();
-
-  await task.save();
-  return task;
+  // المنطق الموحد للـ Resume هو نفسه الـ Start لضمان عدم تصفير البيانات
+  return await startTaskTimer(taskId);
 };
 
 /* =========================
@@ -133,7 +151,7 @@ module.exports = {
   createTask,
   getAllTasks,
   getTaskById,
-  updateTask,
+  updateTask, 
   saveTaskTime, // 🔒 لم نلمسه
   deleteTask,
 
