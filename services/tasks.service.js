@@ -63,12 +63,21 @@ const getTaskById = async (taskId) => {
 };
 
 /* =========================
-   UPDATE TASK
+   UPDATE TASK (MODIFIED)
+   تحديث المهمة مع ضمان تحديث اسم الموظف الجديد
 ========================= */
 const updateTask = async (taskId, data) => {
+  // ✅ إذا كان التعديل يحتوي على تغيير للموظف، نجلب اسمه الجديد ونحدثه
+  if (data.workerId) {
+    const worker = await User.findOne({ id: Number(data.workerId) });
+    if (worker) {
+      data.workerName = worker.name;
+    }
+  }
+
   return await Task.findOneAndUpdate(
     { id: taskId },
-    data,
+    { $set: data }, // استخدام $set لضمان تحديث الحقول المرسلة فقط
     { new: true, projection: { _id: 0 } }
   );
 };
@@ -176,5 +185,5 @@ module.exports = {
   startTaskTimer,
   pauseTaskTimer,
   resumeTaskTimer,
-  resetTaskTimer,
+  resetTaskTimer, 
 };
