@@ -14,7 +14,7 @@ const optionsRoutes = require("./routes/options.routes.js");
 const settingsRoutes = require("./routes/settings.routes.js");
 const reportsRoutes = require("./routes/reports.routes.js");
 const deliverablesRoutes = require("./routes/deliverables.routes.js");
-
+const notificationRoutes = require('./routes/notification.routes');
 /* 🔍 DEBUG ROUTES TYPES */
 console.log("authRoutes typeof:", typeof authRoutes);
 console.log("usersRoutes typeof:", typeof usersRoutes);
@@ -40,7 +40,6 @@ const allowedOrigins = [
   "https://marketing-frontend.onrender.com",
   "https://marketing-frontend-e1c3.onrender.com",
 ];
-
 app.use(
   cors({
     origin(origin, callback) {
@@ -77,6 +76,7 @@ app.use("/options", optionsRoutes);
 app.use("/settings", settingsRoutes);
 app.use("/reports", reportsRoutes);
 app.use("/deliverables", deliverablesRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 /* START SERVER */
 const PORT = process.env.PORT || 5000;

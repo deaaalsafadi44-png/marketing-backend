@@ -1,29 +1,31 @@
 const { sendNotification } = require("../services/notifications.service");
 const tasksService = require("../services/tasks.service");
+const Notification = require("../models/Notification"); // ✅ التأكد من وجود الاستدعاء في الأعلى
 
 /* =========================
-   CREATE TASK
-========================= */
-/* =========================
-   CREATE TASK
+   CREATE TASK (UPDATED)
 ========================= */
 const createTask = async (req, res) => {
   try {
     const task = await tasksService.createTask(req.body);
     
-    // --- كود الإشعارات الجديد المحسن ---
     if (task && task.workerId) {
+      // ✅ 1. حفظ الإشعار في قاعدة البيانات ليظهر في العداد (الميزة الجديدة)
+      // هذا السجل هو ما سيجعلك ترى رقم 1 أو 2 فوق أيقونة الجرس لاحقاً
+      await Notification.create({
+        recipientId: task.workerId,
+        title: "مهمة جديدة! 📋",
+        body: `📌 المهمة: ${task.title}\n🏢 الشركة: ${task.company || 'غير محدد'}`,
+        url: `/tasks/view/${task.id}`
+      });
+
+      // 2. إرسال إشعار الـ Push للمتصفح (ليظهر التنبيه في ويندوز حتى والمتصفح مغلق)
       sendNotification(task.workerId, {
         title: "مهمة جديدة! 📋",
-        
-        // ✅ ضع التنسيق الجديد هنا في خانة الـ body
         body: `📌 المهمة: ${task.title}\n🏢 الشركة: ${task.company || 'غير محدد'}\n⏳ الأولوية: ${task.priority || 'عادية'}`,
-        
-        // الرابط الصحيح الذي استخرجناه من متصفحك
-        url: `/tasks/view/${task.id}` 
+        url: `/tasks/view/${task.id}`
       }).catch(err => console.error("Notification Error:", err)); 
     }
-    // -------------------------
 
     res.json(task);
   } catch (err) {
