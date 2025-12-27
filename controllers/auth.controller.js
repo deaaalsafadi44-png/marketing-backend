@@ -118,27 +118,20 @@ const getMe = async (req, res) => {
     res.status(500).json({ message: "Failed to get user" });
   }
 };
-/* =========================
-   SAVE PUSH SUBSCRIPTION
-   POST /auth/subscribe
-========================= */
 const subscribe = async (req, res) => {
   try {
     const { subscription } = req.body;
-    
-    // سحب المعرف من req.user (الذي يأتي من verifyToken middleware)
     const userId = req.user.id;
 
     if (!subscription) {
       return res.status(400).json({ message: "Subscription is required" });
     }
 
-    // تحديث المستخدم وحفظ الاشتراك
-   // ✅ التعديل هنا: استخدام $addToSet لإضافة الجهاز للمصفوفة دون تكراره
-await User.updateOne(
-  { id: userId }, 
-  { $addToSet: { pushSubscriptions: subscription } } 
-);
+    // ✅ التعديل الجوهري: إضافة الاشتراك الجديد للمصفوفة دون مسح القديم
+    await User.updateOne(
+      { id: userId }, 
+      { $addToSet: { pushSubscriptions: subscription } } 
+    );
 
     res.status(200).json({ message: "Push subscription saved ✅" });
   } catch (error) {
