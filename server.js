@@ -5,7 +5,7 @@ const cors = require("cors");
 const mongoose = require("mongoose");
 const cookieParser = require("cookie-parser");
 const morgan = require("morgan");
-
+const webpush = require("web-push");
 // Routes
 const authRoutes = require("./routes/auth.routes.js");
 const usersRoutes = require("./routes/users.routes.js");
@@ -58,7 +58,12 @@ app.options("*", cors());
 app.use(morgan("tiny"));
 app.use(express.json());
 app.use(cookieParser());
-
+/* PUSH NOTIFICATIONS CONFIG */
+webpush.setVapidDetails(
+  process.env.VAPID_EMAIL,
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
 /* ROOT */
 app.get("/", (req, res) => {
   res.send("Backend is running ✔");

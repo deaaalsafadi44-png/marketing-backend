@@ -10,6 +10,15 @@ const UserSchema = new mongoose.Schema(
     dept: String,
     createdAt: String,
     refreshToken: String,
+
+    /* =====================================================
+       ⭐ NEW — PUSH NOTIFICATIONS SUBSCRIPTION
+       تخزين بيانات المتصفح لإرسال الإشعارات وهو مغلق
+    ===================================================== */
+    pushSubscription: {
+      type: Object,
+      default: null
+    },
   },
   { versionKey: false }
 );

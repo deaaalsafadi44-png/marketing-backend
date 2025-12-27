@@ -1,3 +1,4 @@
+const { sendNotification } = require("../services/notifications.service");
 const tasksService = require("../services/tasks.service");
 
 /* =========================
@@ -6,13 +7,25 @@ const tasksService = require("../services/tasks.service");
 const createTask = async (req, res) => {
   try {
     const task = await tasksService.createTask(req.body);
+    
+    // --- كود الإشعارات الجديد ---
+    // إذا تمت عملية إنشاء التاسك بنجاح وكان هناك موظف مسند إليه
+    if (task && task.workerId) {
+      sendNotification(task.workerId, {
+        title: "مهمة جديدة! 📋",
+        body: `تم إسناد مهمة جديدة لك: ${task.title}`,
+        url: `/tasks/${task.id}` // اختياري: لفتح المهمة عند الضغط
+      }).catch(err => console.error("Notification Error:", err)); 
+      // استخدمنا .catch لضمان أن فشل الإشعار لا يعطل رد السيرفر للمستخدم
+    }
+    // -------------------------
+
     res.json(task);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Failed to create task" });
   }
 };
-
 /* =========================
    GET ALL TASKS
 ========================= */

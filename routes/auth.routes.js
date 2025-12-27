@@ -31,5 +31,9 @@ router.get("/me", authenticateToken, (req, res) => {
     user: req.user,
   });
 });
-
+/* =========================
+   SUBSCRIBE TO PUSH
+   POST /auth/subscribe
+========================= */
+router.post("/subscribe", authenticateToken, authController.subscribe);
 module.exports = router; // 🔥 هذا هو الحل

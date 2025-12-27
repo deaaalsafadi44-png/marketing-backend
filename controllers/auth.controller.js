@@ -1,5 +1,5 @@
 const authService = require("../services/auth.service");
-
+const User = require("../models/User");
 /* =========================
    LOGIN
    POST /auth/login
@@ -118,10 +118,37 @@ const getMe = async (req, res) => {
     res.status(500).json({ message: "Failed to get user" });
   }
 };
+/* =========================
+   SAVE PUSH SUBSCRIPTION
+   POST /auth/subscribe
+========================= */
+const subscribe = async (req, res) => {
+  try {
+    const { subscription } = req.body;
+    
+    // سحب المعرف من req.user (الذي يأتي من verifyToken middleware)
+    const userId = req.user.id;
 
+    if (!subscription) {
+      return res.status(400).json({ message: "Subscription is required" });
+    }
+
+    // تحديث المستخدم وحفظ الاشتراك
+    await User.updateOne(
+      { id: userId }, 
+      { $set: { pushSubscription: subscription } } // نخزنه كـ Object مباشرة
+    );
+
+    res.status(200).json({ message: "Push subscription saved ✅" });
+  } catch (error) {
+    console.error("Error saving subscription:", error);
+    res.status(500).json({ message: "Failed to save subscription" });
+  }
+};
 module.exports = {
   login,
   refreshToken,
   logout,
   getMe,
+  subscribe,
 };
