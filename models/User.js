@@ -15,10 +15,16 @@ const UserSchema = new mongoose.Schema(
        ⭐ NEW — PUSH NOTIFICATIONS SUBSCRIPTION
        تخزين بيانات المتصفح لإرسال الإشعارات وهو مغلق
     ===================================================== */
-    pushSubscription: {
-      type: Object,
-      default: null
-    },
+   /* =====================================================
+    ⭐ NEW — PUSH NOTIFICATIONS SUBSCRIPTIONS (MODIFIED)
+    تحويلها لمصفوفة لتخزين أكثر من جهاز لنفس المستخدم
+===================================================== */
+pushSubscriptions: [
+  {
+    type: Object,
+    default: {}
+  }
+],
   },
   { versionKey: false }
 );

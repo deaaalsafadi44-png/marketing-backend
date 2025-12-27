@@ -134,10 +134,11 @@ const subscribe = async (req, res) => {
     }
 
     // تحديث المستخدم وحفظ الاشتراك
-    await User.updateOne(
-      { id: userId }, 
-      { $set: { pushSubscription: subscription } } // نخزنه كـ Object مباشرة
-    );
+   // ✅ التعديل هنا: استخدام $addToSet لإضافة الجهاز للمصفوفة دون تكراره
+await User.updateOne(
+  { id: userId }, 
+  { $addToSet: { pushSubscriptions: subscription } } 
+);
 
     res.status(200).json({ message: "Push subscription saved ✅" });
   } catch (error) {
