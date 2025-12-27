@@ -14,7 +14,8 @@ const createTask = async (req, res) => {
       sendNotification(task.workerId, {
         title: "مهمة جديدة! 📋",
         body: `تم إسناد مهمة جديدة لك: ${task.title}`,
-        url: `/tasks/${task.id}` // اختياري: لفتح المهمة عند الضغط
+       // التعديل الصحيح والمطابق لرابط موقعك
+url: `/tasks/view/${task.id}`
       }).catch(err => console.error("Notification Error:", err)); 
       // استخدمنا .catch لضمان أن فشل الإشعار لا يعطل رد السيرفر للمستخدم
     }
