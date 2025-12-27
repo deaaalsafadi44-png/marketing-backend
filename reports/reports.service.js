@@ -35,12 +35,20 @@ const getSummaryReport = async (filters = {}) => {
   const result = await Task.aggregate([
     { $match: matchStage },
     {
-      $group: {
-        _id: null,
-        totalTasks: { $sum: 1 },
-        totalMinutes: { $sum: { $ifNull: ["$timeSpent", 0] } },
-        types: { $push: "$type" },
-      },
+  // داخل ملف reports.service.js في الـ aggregate
+$group: {
+  _id: null,
+  totalTasks: { $sum: 1 },
+  totalMinutes: { 
+    $sum: { 
+      $add: [
+        { $ifNull: ["$timeSpent", 0] },
+        { $divide: [{ $ifNull: ["$timer.totalSeconds", 0] }, 60] } // تحويل الثواني لدقائق
+      ]
+    } 
+  },
+  types: { $push: "$type" },
+}
     },
   ]);
 
