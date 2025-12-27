@@ -15,11 +15,18 @@ const sendNotification = async (userId, payload) => {
       return;
     }
 
-    const notificationPayload = JSON.stringify(payload);
+ const notificationPayload = JSON.stringify(payload);
+
+    // 1. تعريف خيارات الإرسال لضمان الوصول في الخلفية
+    const options = {
+        TTL: 86400,     // مدة بقاء الإشعار 24 ساعة في حال كان الجهاز مغلقاً
+        urgency: "high" // أولوية قصوى لإيقاظ المتصفح من وضع السكون
+    };
 
     // 3. إنشاء وعود الإرسال لكل جهاز موجود في المصفوفة
     const sendPromises = user.pushSubscriptions.map((subscription) => {
-      return webpush.sendNotification(subscription, notificationPayload)
+      // ✅ تمرير الـ options هنا كبارامتر ثالث
+      return webpush.sendNotification(subscription, notificationPayload, options)
         .then(() => console.log(`✅ Sent to one device for user ${userId}`))
         .catch(async (error) => {
           console.error("❌ Error sending to one device:", error.message);
