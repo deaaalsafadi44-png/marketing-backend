@@ -5,25 +5,26 @@ const settingsController = require("../controllers/settings.controller");
 
 const router = express.Router();
 
-/* =========================
+/* =============================================
    GET SETTINGS
-   تعديل: السماح للأدمن والمانجر بالجلب
-========================= */
+   يسمح للجميع (Admin, Manager, User) بالجلب 
+   لكي يظهر اسم المشروع الموحد عند الكل
+   ============================================= */
 router.get(
   "/",
   authenticateToken,
-  authorize(["Admin", "Manager"]), // ✅ أضفنا Manager هنا
+  // ✅ أزلنا authorize هنا لنسمح لكل من يحمل Token برؤية الاسم
   settingsController.getSettings
 );
 
-/* =========================
+/* =============================================
    SAVE SETTINGS
-   تعديل: السماح للأدمن والمانجر بالحفظ
-========================= */
+   التعديل يبقى حصراً للأدمن والمانجر
+   ============================================= */
 router.put(
   "/",
   authenticateToken,
-  authorize(["Admin", "Manager"]), // ✅ أضفنا Manager هنا
+  authorize(["Admin", "Manager"]), 
   settingsController.saveSettings
 );
 
