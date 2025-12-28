@@ -125,12 +125,21 @@ exports.deleteFileFromDeliverable = async (req, res) => {
 };
 
 /* ======================================================
-    🆕 GET SUBMISSIONS (GROUPED BY TASK)
+    🆕 GET SUBMISSIONS (ONLY COMPLETED/LOCKED TASKS)
 ====================================================== */
 exports.getSubmissionsSummary = async (req, res) => {
   try {
-    const data = await deliverablesService.getSubmissionsGroupedByTask();
-    res.json(data);
+    // 1. جلب البيانات الخام من السيرفس
+    const allData = await deliverablesService.getSubmissionsGroupedByTask();
+
+    // 2. الفلترة: سنبقي فقط المهام التي تم قفلها (isLocked === true)
+    // هذا يعني أن الموظف ضغط على زر Finish
+    const filteredData = allData.filter(item => {
+      // نتحقق من وجود بيانات التاسك وأن حالة القفل مفعلة
+      return item.taskDetails && item.taskDetails.isLocked === true;
+    });
+
+    res.json(filteredData);
   } catch (error) {
     console.error("GET SUBMISSIONS ERROR:", error);
     res.status(500).json({ message: "Failed to load submissions" });
