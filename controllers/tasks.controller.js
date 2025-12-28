@@ -217,10 +217,9 @@ const deleteTask = async (req, res) => {
 
   res.json({ message: "Task deleted successfully" });
 };
-/* =====================================================
-    ⭐ NEW — ADD TASK COMMENT
-    تسمح للأدمن والمانجر فقط بإضافة تعليق على المهمة
-===================================================== */
+// أضف هذا السطر في أعلى الملف تماماً إذا لم يكن موجوداً
+const Task = require("../models/Task"); 
+
 const addTaskComment = async (req, res) => {
   const taskId = Number(req.params.id);
   if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
@@ -229,26 +228,26 @@ const addTaskComment = async (req, res) => {
     const { text } = req.body;
     if (!text) return res.status(400).json({ message: "Comment text is required" });
 
-    // جلب المهمة وتحديثها بإضافة التعليق الجديد للمصفوفة
-    const task = await tasksService.getTaskById(taskId);
-    if (!task) return res.status(404).json({ message: "Task not found" });
-
-    // إنشاء كائن التعليق الجديد
+    // ✅ الحل الأضمن: استخدام findOneAndUpdate لإضافة التعليق مباشرة للمصفوفة
     const newComment = {
       text: text,
-      author: req.user.username, // نأخذ الاسم من التوكن (Token)
-      role: req.user.role,       // نأخذ الدور من التوكن
+      author: req.user.name || req.user.username || "Admin", 
+      role: req.user.role,
       createdAt: new Date()
     };
 
-    // إضافة التعليق للمصفوفة وحفظ المهمة
-    task.comments.push(newComment);
-    await task.save();
+    const updatedTask = await Task.findOneAndUpdate(
+      { id: taskId }, // البحث برقم الـ id المخصص في مشروعك
+      { $push: { comments: newComment } }, // إضافة التعليق للمصفوفة
+      { new: true } // إعادة البيانات بعد التحديث
+    );
+
+    if (!updatedTask) return res.status(404).json({ message: "Task not found" });
 
     res.json({ message: "Comment added successfully", comment: newComment });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to add comment" });
+    console.error("Controller Error:", err);
+    res.status(500).json({ message: "Failed to add comment", error: err.message });
   }
 };
 module.exports = {
