@@ -30,30 +30,30 @@ const getUserById = async (req, res) => {
 };
 
 /* ========================================================
-   UPDATE USER (تم التعديل لاستهداف حقل type في التاسكات)
+   UPDATE USER (النسخة النهائية لتوحيد الحقول type و workerJobTitle)
 ======================================================== */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
   if (isNaN(userId)) return res.status(400).json({ message: "Invalid user id" });
 
   try {
-    // 1. جلب بيانات المستخدم الأصلية قبل التعديل
+    // 1. جلب بيانات المستخدم قبل التعديل
     const oldUser = await usersService.getUserById(userId);
     if (!oldUser) return res.status(404).json({ message: "User not found" });
 
-    // 2. تحديث بيانات المستخدم في قاعدة البيانات (Users Collection)
+    // 2. تحديث بيانات المستخدم في جدول الـ Users
     const updated = await usersService.updateUser(userId, req.body);
     if (!updated) return res.status(404).json({ message: "User not found" });
 
-    // 3. مزامنة التاسكات القديمة (تحديث حقل type وحقل workerName)
+    // 3. مزامنة التاسكات القديمة (الحل السحري)
     try {
       const Task = require("../models/Task"); 
       
       const newName = req.body.name || oldUser.name;
-      // المسمى الوظيفي الجديد من الفورم
-      const newJobTitle = req.body.jobTitle || oldUser.jobTitle;
+      // نستخدم dept أو jobTitle حسب ما يرسله الفرونت إند
+      const newJobTitle = req.body.dept || req.body.jobTitle || oldUser.dept;
 
-      // تحديث التاسكات المرتبطة بهذا المستخدم
+      // تحديث كافة الحقول الممكنة لضمان الظهور في الفرونت إند والبحث
       const syncResult = await Task.updateMany(
         { 
           $or: [
@@ -64,17 +64,16 @@ const updateUser = async (req, res) => {
         { 
           $set: { 
             workerName: newName,
-            // التعديل الجذري: تحديث حقل type لأن صور المونجو أظهرت أنه الحقل المستخدم
-            type: newJobTitle, 
-            workerJobTitle: newJobTitle // تحديث هذا أيضاً للاحتياط
+            workerJobTitle: newJobTitle, // للعرض في جدول التاسكات
+            type: newJobTitle           // ليعمل نظام البحث (Search) والفلترة
           } 
         }
       );
 
-      console.log(`[Sync Success] User ID: ${userId} | Matched: ${syncResult.matchedCount} | Updated: ${syncResult.modifiedCount}`);
+      console.log(`[Sync Success] Updated ${syncResult.modifiedCount} tasks to Job Title: ${newJobTitle}`);
 
     } catch (syncErr) {
-      console.error("Critical Task Sync Error:", syncErr.message);
+      console.error("Task Sync Error:", syncErr.message);
     }
 
     res.json(updated);
