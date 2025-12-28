@@ -94,42 +94,14 @@ const getSubmissionsGroupedByTask = async () => {
     },
     {
       $lookup: {
-        from: "tasks", // جرب "tasks" أولاً
-        let: { tId: "$taskId" },
-        pipeline: [
-          { 
-            $match: { 
-              $expr: { $eq: [{ $toString: "$_id" }, { $toString: "$$tId" }] } 
-            } 
-          }
-        ],
+        from: "tasks", 
+        localField: "taskId", // نستخدم taskId (Number)
+        foreignField: "id",    // نربطه مع id (Number) الموجود في TaskSchema
         as: "taskDetails"
       }
     },
-    // ✅ في حال فشل الربط مع "tasks"، سنحاول الربط مع "Task" (حرف كبير)
     {
-      $lookup: {
-        from: "Task", 
-        let: { tId: "$taskId" },
-        pipeline: [
-          { 
-            $match: { 
-              $expr: { $eq: [{ $toString: "$_id" }, { $toString: "$$tId" }] } 
-            } 
-          }
-        ],
-        as: "taskDetailsBackup"
-      }
-    },
-    {
-      $addFields: {
-        taskDetails: { 
-          $ifNull: [
-            { $arrayElemAt: ["$taskDetails", 0] }, 
-            { $arrayElemAt: ["$taskDetailsBackup", 0] }
-          ] 
-        }
-      }
+      $unwind: { path: "$taskDetails", preserveNullAndEmptyArrays: true }
     },
     {
       $project: {
@@ -140,7 +112,7 @@ const getSubmissionsGroupedByTask = async () => {
         submittedByName: 1,
         createdAt: 1,
         rating: 1,
-        taskDetails: 1, // الآن سيحتوي على العنوان والشركة والتعليقات
+        taskDetails: 1, 
         files: {
           $reduce: {
             input: "$files",
@@ -154,7 +126,6 @@ const getSubmissionsGroupedByTask = async () => {
   ]);
   return submissions;
 };
-
 /* =====================================================
    ⭐ NEW — Rate Deliverable (Admin / Manager)
    ✅ منطق صحيح 100%
