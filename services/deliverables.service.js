@@ -59,14 +59,21 @@ const getAllDeliverables = async (taskId) => {
 };
 
 /* =====================================================
-   ✅ NEW — Get deliverable by ID
+   ✅ Get deliverable by ID
 ===================================================== */
 const getDeliverableById = async (deliverableId) => {
   return Deliverable.findById(deliverableId);
 };
 
 /* =====================================================
-   ✅ NEW — Remove file from deliverable
+   🗑️ NEW — Delete entire deliverable record
+===================================================== */
+const deleteDeliverable = async (deliverableId) => {
+  return await Deliverable.findByIdAndDelete(deliverableId);
+};
+
+/* =====================================================
+   ✅ Remove file from deliverable
 ===================================================== */
 const removeFileFromDeliverable = async (deliverableId, fileId) => {
   await Deliverable.updateOne(
@@ -126,9 +133,9 @@ const getSubmissionsGroupedByTask = async () => {
   ]);
   return submissions;
 };
+
 /* =====================================================
-   ⭐ NEW — Rate Deliverable (Admin / Manager)
-   ✅ منطق صحيح 100%
+   ⭐ Rate Deliverable (Admin / Manager)
 ===================================================== */
 const rateDeliverable = async (deliverableId, rating, rater) => {
   const deliverable = await Deliverable.findById(deliverableId);
@@ -148,7 +155,6 @@ const rateDeliverable = async (deliverableId, rating, rater) => {
   deliverable.ratedAt = finalRating ? new Date() : null;
 
   await deliverable.save();
-
   return deliverable;
 };
 
@@ -156,12 +162,9 @@ module.exports = {
   createDeliverable,
   updateDeliverableFiles,
   getAllDeliverables,
-
-  // ✅ exports الموجودة
   getDeliverableById,
+  deleteDeliverable, // ✅ تم الإضافة هنا
   removeFileFromDeliverable,
   getSubmissionsGroupedByTask,
-
-  // ⭐ export الجديد
   rateDeliverable,
 };

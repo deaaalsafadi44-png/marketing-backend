@@ -3,7 +3,7 @@ const uploadToCloudinary = require("../utils/cloudinaryUpload");
 const cloudinary = require("cloudinary").v2;
 
 /* =========================
-   GET ALL DELIVERABLES
+    GET ALL DELIVERABLES
 ========================= */
 exports.getAllDeliverables = async (req, res) => {
   try {
@@ -17,7 +17,7 @@ exports.getAllDeliverables = async (req, res) => {
 };
 
 /* =========================
-   CREATE DELIVERABLE
+    CREATE DELIVERABLE
 ========================= */
 exports.createDeliverable = async (req, res) => {
   let deliverable;
@@ -85,7 +85,7 @@ exports.createDeliverable = async (req, res) => {
 };
 
 /* =========================
-   DELETE FILE FROM DELIVERABLE
+    DELETE FILE FROM DELIVERABLE
 ========================= */
 exports.deleteFileFromDeliverable = async (req, res) => {
   try {
@@ -125,7 +125,7 @@ exports.deleteFileFromDeliverable = async (req, res) => {
 };
 
 /* ======================================================
-   🆕 GET SUBMISSIONS (GROUPED BY TASK)
+    🆕 GET SUBMISSIONS (GROUPED BY TASK)
 ====================================================== */
 exports.getSubmissionsSummary = async (req, res) => {
   try {
@@ -138,8 +138,8 @@ exports.getSubmissionsSummary = async (req, res) => {
 };
 
 /* ======================================================
-   ⭐ RATE DELIVERABLE (ADMIN / MANAGER ONLY)
-   POST /deliverables/:deliverableId/rate
+    ⭐ RATE DELIVERABLE (ADMIN / MANAGER ONLY)
+    POST /deliverables/:deliverableId/rate
 ====================================================== */
 exports.rateDeliverable = async (req, res) => {
   try {
@@ -147,11 +147,11 @@ exports.rateDeliverable = async (req, res) => {
     const { rating } = req.body;
 
     // صلاحيات
-  const role = (req.user.role || "").toLowerCase();
+    const role = (req.user.role || "").toLowerCase();
 
-if (!["admin", "manager"].includes(role)) {
-  return res.status(403).json({ message: "Not authorized to rate" });
-}
+    if (!["admin", "manager"].includes(role)) {
+      return res.status(403).json({ message: "Not authorized to rate" });
+    }
 
     // ✅ السماح بـ 0 → 5
     if (rating === undefined || rating < 0 || rating > 5) {
@@ -170,5 +170,46 @@ if (!["admin", "manager"].includes(role)) {
   } catch (error) {
     console.error("RATE DELIVERABLE ERROR:", error);
     res.status(500).json({ message: "Failed to rate deliverable" });
+  }
+};
+
+/* ======================================================
+    🗑️ DELETE ENTIRE DELIVERABLE (التعديل الجديد)
+    يستخدم لحذف التسليم بالكامل وملفاته من Cloudinary
+====================================================== */
+exports.deleteDeliverable = async (req, res) => {
+  try {
+    const { deliverableId } = req.params;
+
+    // 1. البحث عن التسليم لجلب بيانات الملفات قبل الحذف
+    const deliverable = await deliverablesService.getDeliverableById(deliverableId);
+    if (!deliverable) {
+      return res.status(404).json({ message: "Deliverable not found" });
+    }
+
+    // 2. حذف جميع الملفات المرتبطة من Cloudinary
+    if (deliverable.files && deliverable.files.length > 0) {
+      await Promise.all(
+        deliverable.files.map(async (file) => {
+          if (file.publicId) {
+            try {
+              await cloudinary.uploader.destroy(file.publicId, {
+                resource_type: file.resource_type || "image",
+              });
+            } catch (clErr) {
+              console.error("Cloudinary Cleanup Error:", clErr);
+            }
+          }
+        })
+      );
+    }
+
+    // 3. حذف السجل نهائياً من قاعدة البيانات
+    await deliverablesService.deleteDeliverable(deliverableId);
+
+    return res.json({ message: "Deliverable and all associated files deleted successfully" });
+  } catch (err) {
+    console.error("DELETE DELIVERABLE ERROR:", err);
+    res.status(500).json({ message: "Failed to delete deliverable" });
   }
 };
