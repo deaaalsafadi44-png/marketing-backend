@@ -22,8 +22,9 @@ router.get(
 router.put(
   "/",
   authenticateToken,
-  authorize(["Admin"]),
+authorize(["Admin", "Manager"]),
   optionsController.saveOptions
+  
 );
 
 module.exports = router;
