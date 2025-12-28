@@ -75,17 +75,13 @@ const removeFileFromDeliverable = async (deliverableId, fileId) => {
   );
 };
 
-/* =====================================================
-   🆕 NEW — Get submissions grouped by task
-   ✅ تعديل بسيط فقط: إضافة deliverableId
-===================================================== */
 const getSubmissionsGroupedByTask = async () => {
   const submissions = await Deliverable.aggregate([
     { $sort: { createdAt: -1 } },
     {
       $group: {
         _id: "$taskId",
-        deliverableId: { $first: "$_id" }, // ⭐ إضافة مهمة
+        deliverableId: { $first: "$_id" },
         taskId: { $first: "$taskId" },
         submittedById: { $first: "$submittedById" },
         submittedByName: { $first: "$submittedByName" },
@@ -95,6 +91,20 @@ const getSubmissionsGroupedByTask = async () => {
         ratedById: { $first: "$ratedById" },
         ratedByName: { $first: "$ratedByName" },
       },
+    },
+    /* --- التعديل يبدأ من هنا --- */
+    {
+      $lookup: {
+        from: "tasks", 
+        let: { tId: "$taskId" },
+        pipeline: [
+          { $match: { $expr: { $eq: [{ $toString: "$_id" }, "$$tId"] } } }
+        ],
+        as: "taskDetails"
+      }
+    },
+    {
+      $unwind: { path: "$taskDetails", preserveNullAndEmptyArrays: true }
     },
     {
       $project: {
@@ -107,6 +117,7 @@ const getSubmissionsGroupedByTask = async () => {
         rating: 1,
         ratedById: 1,
         ratedByName: 1,
+        taskDetails: 1,
         files: {
           $reduce: {
             input: "$files",
