@@ -13,7 +13,7 @@ const TaskSchema = new mongoose.Schema(
     workerName: String,
     timeSpent: Number,
     createdAt: String,
-
+workerJobTitle: { type: String, default: "" },
     /* =====================================================
         ⭐ NEW — PROFESSIONAL TIMER
     ===================================================== */

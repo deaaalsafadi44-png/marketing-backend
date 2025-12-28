@@ -17,15 +17,18 @@ const calculateLiveTime = (task) => {
 };
 
 /* =========================
-   CREATE TASK
+   CREATE TASK (Updated to include Job Title)
 ========================= */
 const createTask = async (data) => {
+  // نجلب الموظف من قاعدة البيانات باستخدام المعرف المرسل
   const worker = await User.findOne({ id: Number(data.workerId) });
 
   const task = {
     id: Math.floor(Date.now() / 1000),
     ...data,
     workerName: worker?.name || "Unknown",
+    // ✅ إضافة المسمى الوظيفي (dept) ليكون جزءاً من بيانات التاسك
+    workerJobTitle: worker?.dept || "No Job Title", 
     createdAt: new Date().toISOString(),
   };
 
@@ -63,25 +66,25 @@ const getTaskById = async (taskId) => {
 };
 
 /* =========================
-   UPDATE TASK (MODIFIED)
-   تحديث المهمة مع ضمان تحديث اسم الموظف الجديد
+   UPDATE TASK (Updated for Job Title)
 ========================= */
 const updateTask = async (taskId, data) => {
-  // ✅ إذا كان التعديل يحتوي على تغيير للموظف، نجلب اسمه الجديد ونحدثه
+  // ✅ إذا تم تغيير الموظف (workerId)، نحدث الاسم والمسمى الوظيفي معاً
   if (data.workerId) {
     const worker = await User.findOne({ id: Number(data.workerId) });
     if (worker) {
       data.workerName = worker.name;
+      // ✅ تحديث المسمى الوظيفي للموظف الجديد
+      data.workerJobTitle = worker.dept; 
     }
   }
 
   return await Task.findOneAndUpdate(
     { id: taskId },
-    { $set: data }, // استخدام $set لضمان تحديث الحقول المرسلة فقط
+    { $set: data },
     { new: true, projection: { _id: 0 } }
   );
 };
-
 /* =========================
    SAVE TASK TIME (LEGACY)
    ⚠️ لا نلمسه
