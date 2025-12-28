@@ -34,43 +34,44 @@ const getUserById = async (req, res) => {
 };
 
 /* =========================
-   UPDATE USER (Corrected Sync with $set)
+   UPDATE USER (النسخة النهائية لحل اختفاء الجوب)
 ========================= */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
   if (isNaN(userId)) return res.status(400).json({ message: "Invalid user id" });
 
   try {
-    // 1. جلب بيانات المستخدم القديمة قبل التعديل للبحث بها في التاسكات
+    // 1. جلب البيانات قبل التعديل (لنحصل على الاسم القديم المسجل في التاسكات)
     const oldUser = await usersService.getUserById(userId);
     if (!oldUser) return res.status(404).json({ message: "User not found" });
 
-    // 2. تحديث بيانات المستخدم (مثل الباسورد والجوب الجديد)
+    // 2. تحديث بيانات المستخدم في قاعدة بيانات المستخدمين
     const updated = await usersService.updateUser(userId, req.body);
     if (!updated) return res.status(404).json({ message: "User not found" });
 
-    // 3. تحديث التاسكات المرتبطة لضمان عدم اختفاء الجوب
+    // 3. تحديث التاسكات المرتبطة
     try {
       const Task = require("../models/Task"); 
 
-      // نأخذ القيم الجديدة من req.body لضمان الدقة العالية
+      // القيم الجديدة من طلب التعديل
       const newName = req.body.name || oldUser.name;
       const newJobTitle = req.body.jobTitle || oldUser.jobTitle;
 
-      if (req.body.jobTitle || req.body.name) {
-        await Task.updateMany(
-          { workerName: oldUser.name }, // البحث بالاسم القديم
-          { 
-            $set: { 
-              workerName: newName,
-              workerJobTitle: newJobTitle 
-            } 
-          }
-        );
-        console.log(`Sync success: Updated tasks for ${newName}`);
-      }
+      // تنفيذ التحديث الجماعي لجميع التاسكات التي تحمل اسم الموظف القديم
+      const syncResult = await Task.updateMany(
+        { workerName: oldUser.name }, 
+        { 
+          $set: { 
+            workerName: newName,
+            workerJobTitle: newJobTitle 
+          } 
+        }
+      );
+      
+      console.log(`Sync Report: Found ${syncResult.matchedCount} tasks, updated ${syncResult.modifiedCount}`);
+      
     } catch (syncErr) {
-      console.error("Sync failed, but user was updated:", syncErr.message);
+      console.error("Task Sync Error:", syncErr.message);
     }
 
     res.json(updated);
@@ -104,7 +105,7 @@ const createUser = async (req, res) => {
 };
 
 /* =========================
-   DELETE USER ✅ (المضاف)
+   DELETE USER
 ========================= */
 const deleteUser = async (req, res) => {
   const userId = Number(req.params.id);
