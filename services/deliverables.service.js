@@ -94,22 +94,42 @@ const getSubmissionsGroupedByTask = async () => {
     },
     {
       $lookup: {
-        from: "tasks", // تأكد 100% أن هذا هو اسم الـ collection في MongoDB
-        let: { tId: "$taskId" }, // نجعل taskId متاحاً داخل الـ pipeline
+        from: "tasks", // جرب "tasks" أولاً
+        let: { tId: "$taskId" },
         pipeline: [
           { 
             $match: { 
-              $expr: { 
-                $eq: [{ $toString: "$_id" }, { $toString: "$$tId" }] 
-              } 
+              $expr: { $eq: [{ $toString: "$_id" }, { $toString: "$$tId" }] } 
             } 
           }
         ],
         as: "taskDetails"
       }
     },
+    // ✅ في حال فشل الربط مع "tasks"، سنحاول الربط مع "Task" (حرف كبير)
     {
-      $unwind: { path: "$taskDetails", preserveNullAndEmptyArrays: true }
+      $lookup: {
+        from: "Task", 
+        let: { tId: "$taskId" },
+        pipeline: [
+          { 
+            $match: { 
+              $expr: { $eq: [{ $toString: "$_id" }, { $toString: "$$tId" }] } 
+            } 
+          }
+        ],
+        as: "taskDetailsBackup"
+      }
+    },
+    {
+      $addFields: {
+        taskDetails: { 
+          $ifNull: [
+            { $arrayElemAt: ["$taskDetails", 0] }, 
+            { $arrayElemAt: ["$taskDetailsBackup", 0] }
+          ] 
+        }
+      }
     },
     {
       $project: {
@@ -120,9 +140,7 @@ const getSubmissionsGroupedByTask = async () => {
         submittedByName: 1,
         createdAt: 1,
         rating: 1,
-        ratedById: 1,
-        ratedByName: 1,
-        taskDetails: 1,
+        taskDetails: 1, // الآن سيحتوي على العنوان والشركة والتعليقات
         files: {
           $reduce: {
             input: "$files",
