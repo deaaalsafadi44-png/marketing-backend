@@ -3,17 +3,17 @@ const Notification = require("../models/Notification");
 // 1. جلب كل إشعارات المستخدم (للعرض في القائمة)
 const getMyNotifications = async (req, res) => {
   try {
-    const userId = req.user.id; // نعتمد على معرف المستخدم من التوكن
+    const userId = req.user.id; 
     const notifications = await Notification.find({ recipientId: userId })
-      .sort({ createdAt: -1 }) // الأحدث أولاً
-      .limit(20); // جلب آخر 20 إشعاراً فقط
+      .sort({ createdAt: -1 }) 
+      .limit(20); 
     res.json(notifications);
   } catch (err) {
     res.status(500).json({ message: "خطأ في جلب الإشعارات" });
   }
 };
 
-// 2. جلب عدد الإشعارات غير المقروءة (هذا هو محرك العداد في النافبار)
+// 2. جلب عدد الإشعارات غير المقروءة
 const getUnreadCount = async (req, res) => {
   try {
     const userId = req.user.id;
@@ -27,7 +27,7 @@ const getUnreadCount = async (req, res) => {
   }
 };
 
-// 3. تحديث الإشعار ليصبح "مقروءاً" (عندما يضغط عليه الموظف)
+// 3. تحديث الإشعار ليصبح "مقروءاً"
 const markAsRead = async (req, res) => {
   try {
     const notificationId = req.params.id;
@@ -38,8 +38,28 @@ const markAsRead = async (req, res) => {
   }
 };
 
+// 4. حذف إشعار محدد (الإضافة الجديدة)
+const deleteNotification = async (req, res) => {
+  try {
+    const notificationId = req.params.id;
+    
+    // البحث عن الإشعار وحذفه
+    const deletedNotification = await Notification.findByIdAndDelete(notificationId);
+
+    if (!deletedNotification) {
+      return res.status(404).json({ message: "الإشعار غير موجود" });
+    }
+
+    res.status(200).json({ message: "تم حذف الإشعار بنجاح" });
+  } catch (error) {
+    res.status(500).json({ message: "خطأ في السيرفر أثناء الحذف", error });
+  }
+};
+
+// تصدير جميع الدوال للاستخدام في ملف الروابط (Routes)
 module.exports = {
   getMyNotifications,
   getUnreadCount,
-  markAsRead
+  markAsRead,
+  deleteNotification // تأكد من إضافة اسم الدالة هنا أيضاً
 };
