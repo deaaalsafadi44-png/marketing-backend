@@ -100,6 +100,7 @@ const saveTaskTime = async (taskId, timeSpent) => {
 const startTaskTimer = async (taskId) => {
   const task = await Task.findOne({ id: taskId });
   if (!task) return null;
+  if (task.isLocked) return task.toObject ? task.toObject() : task;
 
   if (task.timer.isRunning) return calculateLiveTime(task.toObject());
 
@@ -117,6 +118,7 @@ const startTaskTimer = async (taskId) => {
 const pauseTaskTimer = async (taskId) => {
   const task = await Task.findOne({ id: taskId });
   if (!task) return null;
+  if (task.isLocked) return task.toObject ? task.toObject() : task;
 
   if (!task.timer.isRunning || !task.timer.startedAt) {
     return calculateLiveTime(task.toObject());
@@ -151,6 +153,7 @@ const resumeTaskTimer = async (taskId) => {
 const resetTaskTimer = async (taskId) => {
   const task = await Task.findOne({ id: taskId });
   if (!task) return null;
+  if (task.isLocked) return task.toObject ? task.toObject() : task;
 
   // إعادة ضبط كائن التايمر للقيم الابتدائية
   task.timer.totalSeconds = 0;
@@ -159,6 +162,30 @@ const resetTaskTimer = async (taskId) => {
   task.timer.pausedAt = null;
   task.timer.lastUpdatedAt = new Date();
 
+  await task.save();
+  return task.toObject();
+};
+const lockTask = async (taskId) => {
+  const task = await Task.findOne({ id: taskId });
+  if (!task) return null;
+  if (task.timer.isRunning && task.timer.startedAt) {
+    const now = new Date();
+    const startTime = new Date(task.timer.startedAt);
+    const diffSeconds = Math.floor((now.getTime() - startTime.getTime()) / 1000);
+    task.timer.totalSeconds += diffSeconds;
+    task.timer.isRunning = false;
+    task.timer.startedAt = null;
+  }
+  task.isLocked = true;
+  task.status = "Completed"; 
+  await task.save();
+  return task.toObject();
+};
+
+const unlockTask = async (taskId) => {
+  const task = await Task.findOne({ id: taskId });
+  if (!task) return null;
+  task.isLocked = false;
   await task.save();
   return task.toObject();
 };
@@ -186,4 +213,6 @@ module.exports = {
   pauseTaskTimer,
   resumeTaskTimer,
   resetTaskTimer, 
+  lockTask,
+  unlockTask,
 };

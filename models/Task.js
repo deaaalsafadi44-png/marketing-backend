@@ -25,6 +25,9 @@ const TaskSchema = new mongoose.Schema(
       lastUpdatedAt: { type: Date, default: null },
     },
 
+    // 🔒 التعديل الجديد هنا:
+    isLocked: { type: Boolean, default: false }, 
+
     /* =====================================================
         ⭐ NEW — COMMENTS ARRAY (Admin & Manager)
         ✅ إضافة حقل التعليقات دون المساس بالبيانات القديمة

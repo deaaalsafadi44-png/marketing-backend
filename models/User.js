@@ -8,16 +8,18 @@ const UserSchema = new mongoose.Schema(
     password: String,
     role: String,
     dept: String,
+    // 💼 الإضافة الجديدة هنا:
+    jobTitle: { type: String, default: "" }, 
     createdAt: String,
     refreshToken: String,
 
     /* =====================================================
-       ⭐ NEW — PUSH NOTIFICATIONS SUBSCRIPTION
-       تخزين بيانات المتصفح لإرسال الإشعارات وهو مغلق
+        ⭐ NEW — PUSH NOTIFICATIONS SUBSCRIPTION
+        تخزين بيانات المتصفح لإرسال الإشعارات وهو مغلق
     ===================================================== */
    /* =====================================================
-    ⭐ NEW — PUSH NOTIFICATIONS SUBSCRIPTIONS (MODIFIED)
-    تحويلها لمصفوفة لتخزين أكثر من جهاز لنفس المستخدم
+     ⭐ NEW — PUSH NOTIFICATIONS SUBSCRIPTIONS (MODIFIED)
+     تحويلها لمصفوفة لتخزين أكثر من جهاز لنفس المستخدم
 ===================================================== */
 pushSubscriptions: [
   {

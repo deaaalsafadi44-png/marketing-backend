@@ -273,7 +273,46 @@ const deleteTaskComment = async (req, res) => {
     res.status(500).json({ message: "Failed to delete comment" });
   }
 };
+/* =====================================================
+    🔒 NEW — LOCK TASK
+    POST /tasks/:id/lock
+===================================================== */
+const lockTask = async (req, res) => {
+  const taskId = Number(req.params.id);
+  if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
 
+  try {
+    const updated = await tasksService.lockTask(taskId);
+    if (!updated) return res.status(404).json({ message: "Task not found" });
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to lock task" });
+  }
+};
+
+/* =====================================================
+    🔓 NEW — UNLOCK TASK (Admin Only)
+    POST /tasks/:id/unlock
+===================================================== */
+const unlockTask = async (req, res) => {
+  const taskId = Number(req.params.id);
+  if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
+
+  // حماية إضافية: التأكد أن القادم هو أدمن
+  if (req.user.role !== "Admin") {
+    return res.status(403).json({ message: "Only Admin can unlock tasks" });
+  }
+
+  try {
+    const updated = await tasksService.unlockTask(taskId);
+    if (!updated) return res.status(404).json({ message: "Task not found" });
+    res.json(updated);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to unlock task" });
+  }
+};
 // لا تنسى إضافة deleteTaskComment إلى module.exports في نهاية الملف
 module.exports = {
   createTask,
@@ -290,4 +329,6 @@ module.exports = {
   resetTaskTimer,
   addTaskComment,
   deleteTaskComment,
+  lockTask,   // ✅ إضافة هذه
+  unlockTask, // ✅ إضافة هذه
 };

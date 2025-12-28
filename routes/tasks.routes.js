@@ -76,6 +76,20 @@ router.post(
   authenticateToken,
   tasksController.pauseTaskTimer
 );
+/* LOCK TASK (الموظف ينهي المهمة ويقفل التايمر) */
+router.post(
+  "/:id/lock",
+  authenticateToken,
+  tasksController.lockTask
+);
+
+/* UNLOCK TASK (الأدمن فقط يفك القفل) */
+router.post(
+  "/:id/unlock",
+  authenticateToken,
+  authorize(["Admin"]),
+  tasksController.unlockTask
+);
 
 /* RESUME TIMER */
 router.post(
