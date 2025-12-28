@@ -92,36 +92,29 @@ const getSubmissionsGroupedByTask = async () => {
         ratedByName: { $first: "$ratedByName" },
       },
     },
-    /* --- التعديل الجذري هنا لضمان مطابقة الأنواع --- */
+    // ✅ الحل الجذري هنا: تحويل taskId من نص إلى ObjectId قبل عملية الـ lookup
+    {
+      $addFields: {
+        convertedTaskId: {
+          $convert: {
+            input: "$taskId",
+            to: "objectId",
+            onError: null, // في حال كان النص غير صالح لا يسبب خطأ
+            onNull: null
+          }
+        }
+      }
+    },
     {
       $lookup: {
         from: "tasks", 
-        localField: "taskId", // نستخدم الحقل مباشرة
-        foreignField: "_id",  // MongoDB سيقوم بمحاولة المطابقة تلقائياً إذا كان الـ taskId مخزناً كـ ObjectId
+        localField: "convertedTaskId", // نستخدم الحقل المحول حديثاً
+        foreignField: "_id",
         as: "taskDetails"
       }
     },
-    /* إذا ظل فارغاً، نستخدم الطريقة البديلة للتحويل النصي */
     {
-      $addFields: {
-        taskDetails: { $ifNull: [{ $arrayElemAt: ["$taskDetails", 0] }, null] }
-      }
-    },
-    /* محاولة ربط ثانية في حال كان taskId نصاً والـ _id أوبجكت */
-    {
-      $lookup: {
-        from: "tasks",
-        let: { tId: "$taskId" },
-        pipeline: [
-          { $match: { $expr: { $eq: [{ $toString: "$_id" }, { $toString: "$$tId" }] } } }
-        ],
-        as: "backupDetails"
-      }
-    },
-    {
-      $addFields: {
-        taskDetails: { $ifNull: ["$taskDetails", { $arrayElemAt: ["$backupDetails", 0] }] }
-      }
+      $unwind: { path: "$taskDetails", preserveNullAndEmptyArrays: true }
     },
     {
       $project: {
