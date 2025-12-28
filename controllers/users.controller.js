@@ -34,7 +34,7 @@ const getUserById = async (req, res) => {
 };
 
 /* =========================
-   UPDATE USER (Modified to sync with tasks)
+   UPDATE USER (النسخة المصححة والمضمونة)
 ========================= */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
@@ -42,18 +42,22 @@ const updateUser = async (req, res) => {
     return res.status(400).json({ message: "Invalid user id" });
 
   try {
-    // 1. تحديث بيانات المستخدم أولاً
-    const updated = await usersService.updateUser(userId, req.body);
-    if (!updated)
+    // 1. جلب بيانات المستخدم "قبل التعديل" لمعرفة الاسم القديم المخزن في التاسكات
+    const oldUser = await usersService.getUserById(userId);
+    if (!oldUser)
       return res.status(404).json({ message: "User not found" });
 
-    // 2. تحديث التاسكات المرتبطة بهذا الموظف إذا تم تغيير المسمى الوظيفي أو الاسم
-    // نحتاج استدعاء موديل التاسكات هنا (تأكد من استيراده في أعلى الملف)
-    const Task = require("../models/task.model"); // تأكد من مسار موديل التاسكات الصحيح لديك
+    // 2. تحديث بيانات المستخدم في قاعدة البيانات (يرجع البيانات الجديدة)
+    const updated = await usersService.updateUser(userId, req.body);
+
+    // 3. تحديث كافة التاسكات المرتبطة بهذا الموظف
+    const Task = require("../models/task.model"); // تأكد من صحة هذا المسار
 
     if (req.body.jobTitle || req.body.name) {
+      // نبحث بالاسم القديم (oldUser.name) 
+      // ونقوم بتحديثه للاسم الجديد والمسمى الجديد (من كائن updated)
       await Task.updateMany(
-        { workerName: updated.name }, // البحث بالاسم القديم أو المعرف
+        { workerName: oldUser.name }, 
         { 
           workerJobTitle: updated.jobTitle,
           workerName: updated.name 
@@ -63,8 +67,8 @@ const updateUser = async (req, res) => {
 
     res.json(updated);
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Failed to update user" });
+    console.error("Update Sync Error:", err);
+    res.status(500).json({ message: "Failed to update user and sync tasks" });
   }
 };
 
