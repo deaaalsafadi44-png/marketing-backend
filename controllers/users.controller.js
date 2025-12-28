@@ -34,41 +34,44 @@ const getUserById = async (req, res) => {
 };
 
 /* =========================
-   UPDATE USER (النسخة المصححة والمضمونة)
+   UPDATE USER (Corrected Path)
 ========================= */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
-  if (isNaN(userId))
-    return res.status(400).json({ message: "Invalid user id" });
+  if (isNaN(userId)) return res.status(400).json({ message: "Invalid user id" });
 
   try {
-    // 1. جلب بيانات المستخدم "قبل التعديل" لمعرفة الاسم القديم المخزن في التاسكات
+    // 1. جلب الاسم القديم قبل التعديل
     const oldUser = await usersService.getUserById(userId);
-    if (!oldUser)
-      return res.status(404).json({ message: "User not found" });
+    if (!oldUser) return res.status(404).json({ message: "User not found" });
 
-    // 2. تحديث بيانات المستخدم في قاعدة البيانات (يرجع البيانات الجديدة)
+    // 2. تحديث بيانات المستخدم (هذا الجزء ينجح في تغيير الباسورد)
     const updated = await usersService.updateUser(userId, req.body);
 
-    // 3. تحديث كافة التاسكات المرتبطة بهذا الموظف
-    const Task = require("../models/task.model"); // تأكد من صحة هذا المسار
+    // 3. تحديث التاسكات (تم تصحيح المسار هنا بناءً على الصورة)
+    try {
+      // لاحظ المسار: تم تغييره إلى Task ليتوافق مع الملف الموجود في مجلد models
+      const Task = require("../models/Task"); 
 
-    if (req.body.jobTitle || req.body.name) {
-      // نبحث بالاسم القديم (oldUser.name) 
-      // ونقوم بتحديثه للاسم الجديد والمسمى الجديد (من كائن updated)
-      await Task.updateMany(
-        { workerName: oldUser.name }, 
-        { 
-          workerJobTitle: updated.jobTitle,
-          workerName: updated.name 
-        }
-      );
+      if (req.body.jobTitle || req.body.name) {
+        await Task.updateMany(
+          { workerName: oldUser.name }, 
+          { 
+            workerJobTitle: updated.jobTitle || oldUser.jobTitle,
+            workerName: updated.name || oldUser.name 
+          }
+        );
+        console.log("Sync success: Tasks updated for", updated.name);
+      }
+    } catch (syncErr) {
+      // نضعها في catch منفصلة لكي لا ينهار السيرفر إذا فشل التزامن
+      console.error("Sync failed, but user was updated:", syncErr.message);
     }
 
     res.json(updated);
   } catch (err) {
-    console.error("Update Sync Error:", err);
-    res.status(500).json({ message: "Failed to update user and sync tasks" });
+    console.error("Master Update Error:", err);
+    res.status(500).json({ message: "Internal Server Error" });
   }
 };
 
