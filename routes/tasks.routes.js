@@ -89,7 +89,17 @@ router.post(
   authenticateToken,
   tasksController.resetTaskTimer
 );
-
+/* =====================================================
+    ⭐ COMMENTS (NEW)
+    POST /tasks/:id/comments
+    يسمح للأدمن والمانجر فقط بإضافة تعليق
+===================================================== */
+router.post(
+  "/:id/comments",
+  authenticateToken,
+  authorize(["Admin", "Manager"]),
+  tasksController.addTaskComment
+);
 /* =========================
    DELETE TASK
    DELETE /tasks/:id

@@ -217,7 +217,40 @@ const deleteTask = async (req, res) => {
 
   res.json({ message: "Task deleted successfully" });
 };
+/* =====================================================
+    ⭐ NEW — ADD TASK COMMENT
+    تسمح للأدمن والمانجر فقط بإضافة تعليق على المهمة
+===================================================== */
+const addTaskComment = async (req, res) => {
+  const taskId = Number(req.params.id);
+  if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
 
+  try {
+    const { text } = req.body;
+    if (!text) return res.status(400).json({ message: "Comment text is required" });
+
+    // جلب المهمة وتحديثها بإضافة التعليق الجديد للمصفوفة
+    const task = await tasksService.getTaskById(taskId);
+    if (!task) return res.status(404).json({ message: "Task not found" });
+
+    // إنشاء كائن التعليق الجديد
+    const newComment = {
+      text: text,
+      author: req.user.username, // نأخذ الاسم من التوكن (Token)
+      role: req.user.role,       // نأخذ الدور من التوكن
+      createdAt: new Date()
+    };
+
+    // إضافة التعليق للمصفوفة وحفظ المهمة
+    task.comments.push(newComment);
+    await task.save();
+
+    res.json({ message: "Comment added successfully", comment: newComment });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to add comment" });
+  }
+};
 module.exports = {
   createTask,
   getAllTasks,
@@ -231,4 +264,5 @@ module.exports = {
   pauseTaskTimer,
   resumeTaskTimer,
   resetTaskTimer,
+  addTaskComment,
 };

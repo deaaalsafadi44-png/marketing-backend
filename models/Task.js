@@ -15,16 +15,28 @@ const TaskSchema = new mongoose.Schema(
     createdAt: String,
 
     /* =====================================================
-       ⭐ NEW — PROFESSIONAL TIMER (Start / Pause / Resume)
-       ✅ بدون تغيير أي منطق قديم — فقط إضافة حقول جديدة
+        ⭐ NEW — PROFESSIONAL TIMER
     ===================================================== */
     timer: {
-      totalSeconds: { type: Number, default: 0 }, // مجموع الوقت المثبت
-      isRunning: { type: Boolean, default: false }, // هل التايمر شغال
-      startedAt: { type: Date, default: null }, // آخر وقت بدأ فيه (أو تم Resume)
-      pausedAt: { type: Date, default: null }, // آخر وقت Pause
-      lastUpdatedAt: { type: Date, default: null }, // للتتبع/الحماية
+      totalSeconds: { type: Number, default: 0 },
+      isRunning: { type: Boolean, default: false },
+      startedAt: { type: Date, default: null },
+      pausedAt: { type: Date, default: null },
+      lastUpdatedAt: { type: Date, default: null },
     },
+
+    /* =====================================================
+        ⭐ NEW — COMMENTS ARRAY (Admin & Manager)
+        ✅ إضافة حقل التعليقات دون المساس بالبيانات القديمة
+    ===================================================== */
+    comments: [
+      {
+        text: { type: String, required: true }, // نص التعليق
+        author: { type: String, required: true }, // اسم الكاتب (Admin/Manager)
+        role: { type: String }, // دور الكاتب للتأكيد
+        createdAt: { type: Date, default: Date.now }, // وقت التعليق تلقائياً
+      }
+    ],
   },
   { versionKey: false }
 );
