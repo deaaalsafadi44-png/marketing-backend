@@ -11,6 +11,7 @@ const getOptions = async () => {
       priority: [],
       status: [],
       companies: [],
+      jobTitles: [],
     }
   );
 };

@@ -2,9 +2,10 @@ const mongoose = require("mongoose");
 
 const OptionsSchema = new mongoose.Schema(
   {
-    priority: Array,
-    status: Array,
-    companies: Array,
+    priority: [String],
+    status: [String],
+    companies: [String],
+    jobTitles: [String], // 🔥 هذا هو السطر الذي ينقصك
   },
   { versionKey: false }
 );
