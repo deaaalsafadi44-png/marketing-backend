@@ -7,23 +7,23 @@ const router = express.Router();
 
 /* =========================
    GET SETTINGS
-   يسمح لجميع الأدوار بالرؤية حتى يتوحد اسم المشروع عند الكل
+   تعديل: السماح للأدمن والمانجر بالجلب
 ========================= */
 router.get(
   "/",
   authenticateToken,
-  // تمت إزالة authorize(["Admin"]) هنا للسماح للكل بالرؤية
+  authorize(["Admin", "Manager"]), // ✅ أضفنا Manager هنا
   settingsController.getSettings
 );
 
 /* =========================
    SAVE SETTINGS
-   يسمح فقط للأدمن بالتعديل
+   تعديل: السماح للأدمن والمانجر بالحفظ
 ========================= */
 router.put(
   "/",
   authenticateToken,
-  authorize(["Admin"]), // يبقى التعديل محصوراً بالأدمن فقط للأمان
+  authorize(["Admin", "Manager"]), // ✅ أضفنا Manager هنا
   settingsController.saveSettings
 );
 
