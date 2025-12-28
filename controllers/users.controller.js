@@ -34,7 +34,7 @@ const getUserById = async (req, res) => {
 };
 
 /* =========================
-   UPDATE USER
+   UPDATE USER (Modified to sync with tasks)
 ========================= */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
@@ -42,9 +42,24 @@ const updateUser = async (req, res) => {
     return res.status(400).json({ message: "Invalid user id" });
 
   try {
+    // 1. تحديث بيانات المستخدم أولاً
     const updated = await usersService.updateUser(userId, req.body);
     if (!updated)
       return res.status(404).json({ message: "User not found" });
+
+    // 2. تحديث التاسكات المرتبطة بهذا الموظف إذا تم تغيير المسمى الوظيفي أو الاسم
+    // نحتاج استدعاء موديل التاسكات هنا (تأكد من استيراده في أعلى الملف)
+    const Task = require("../models/task.model"); // تأكد من مسار موديل التاسكات الصحيح لديك
+
+    if (req.body.jobTitle || req.body.name) {
+      await Task.updateMany(
+        { workerName: updated.name }, // البحث بالاسم القديم أو المعرف
+        { 
+          workerJobTitle: updated.jobTitle,
+          workerName: updated.name 
+        }
+      );
+    }
 
     res.json(updated);
   } catch (err) {
