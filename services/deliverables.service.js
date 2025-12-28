@@ -92,24 +92,41 @@ const getSubmissionsGroupedByTask = async () => {
         ratedByName: { $first: "$ratedByName" },
       },
     },
-    /* --- التعديل يبدأ من هنا --- */
+    /* --- التعديل الجذري هنا لضمان مطابقة الأنواع --- */
     {
       $lookup: {
         from: "tasks", 
-        let: { tId: "$taskId" },
-        pipeline: [
-          { $match: { $expr: { $eq: [{ $toString: "$_id" }, "$$tId"] } } }
-        ],
+        localField: "taskId", // نستخدم الحقل مباشرة
+        foreignField: "_id",  // MongoDB سيقوم بمحاولة المطابقة تلقائياً إذا كان الـ taskId مخزناً كـ ObjectId
         as: "taskDetails"
       }
     },
+    /* إذا ظل فارغاً، نستخدم الطريقة البديلة للتحويل النصي */
     {
-      $unwind: { path: "$taskDetails", preserveNullAndEmptyArrays: true }
+      $addFields: {
+        taskDetails: { $ifNull: [{ $arrayElemAt: ["$taskDetails", 0] }, null] }
+      }
+    },
+    /* محاولة ربط ثانية في حال كان taskId نصاً والـ _id أوبجكت */
+    {
+      $lookup: {
+        from: "tasks",
+        let: { tId: "$taskId" },
+        pipeline: [
+          { $match: { $expr: { $eq: [{ $toString: "$_id" }, { $toString: "$$tId" }] } } }
+        ],
+        as: "backupDetails"
+      }
+    },
+    {
+      $addFields: {
+        taskDetails: { $ifNull: ["$taskDetails", { $arrayElemAt: ["$backupDetails", 0] }] }
+      }
     },
     {
       $project: {
         _id: 0,
-        deliverableId: 1, // ⭐ إضافة مهمة
+        deliverableId: 1,
         taskId: 1,
         submittedById: 1,
         submittedByName: 1,
