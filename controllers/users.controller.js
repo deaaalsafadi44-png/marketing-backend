@@ -34,22 +34,22 @@ const getUserById = async (req, res) => {
 };
 
 /* =========================
-   UPDATE USER (النسخة النهائية لحل اختفاء الجوب)
+   UPDATE USER (النسخة النهائية لحل مشكلة التاسكات القديمة)
 ========================= */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
   if (isNaN(userId)) return res.status(400).json({ message: "Invalid user id" });
 
   try {
-    // 1. جلب البيانات قبل التعديل (لنحصل على الاسم القديم المسجل في التاسكات)
+    // 1. جلب البيانات القديمة (قبل التعديل)
     const oldUser = await usersService.getUserById(userId);
     if (!oldUser) return res.status(404).json({ message: "User not found" });
 
-    // 2. تحديث بيانات المستخدم في قاعدة بيانات المستخدمين
+    // 2. تحديث بيانات المستخدم في السيرفس
     const updated = await usersService.updateUser(userId, req.body);
     if (!updated) return res.status(404).json({ message: "User not found" });
 
-    // 3. تحديث التاسكات المرتبطة
+    // 3. تحديث التاسكات المرتبطة (مزامنة البيانات)
     try {
       const Task = require("../models/Task"); 
 
@@ -57,19 +57,22 @@ const updateUser = async (req, res) => {
       const newName = req.body.name || oldUser.name;
       const newJobTitle = req.body.jobTitle || oldUser.jobTitle;
 
-      // تنفيذ التحديث الجماعي لجميع التاسكات التي تحمل اسم الموظف القديم
-      const syncResult = await Task.updateMany(
-        { workerName: oldUser.name }, 
-        { 
-          $set: { 
-            workerName: newName,
-            workerJobTitle: newJobTitle 
-          } 
-        }
-      );
-      
-      console.log(`Sync Report: Found ${syncResult.matchedCount} tasks, updated ${syncResult.modifiedCount}`);
-      
+      if (req.body.jobTitle || req.body.name) {
+        // استخدمنا RegExp لضمان العثور على الاسم حتى لو فيه مسافات (مثل "Ahmed " بدلاً من "Ahmed")
+        const nameRegex = new RegExp(`^${oldUser.name.trim()}$`, "i");
+
+        const syncResult = await Task.updateMany(
+          { workerName: { $regex: nameRegex } }, 
+          { 
+            $set: { 
+              workerName: newName,
+              workerJobTitle: newJobTitle 
+            } 
+          }
+        );
+        
+        console.log(`Sync success: Found ${syncResult.matchedCount} old tasks and updated them.`);
+      }
     } catch (syncErr) {
       console.error("Task Sync Error:", syncErr.message);
     }
