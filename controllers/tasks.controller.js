@@ -250,6 +250,31 @@ const addTaskComment = async (req, res) => {
     res.status(500).json({ message: "Failed to add comment", error: err.message });
   }
 };
+/* =====================================================
+    ⭐ DELETE TASK COMMENT
+    حذف تعليق معين من مصفوفة التعليقات
+===================================================== */
+const deleteTaskComment = async (req, res) => {
+  const taskId = Number(req.params.id);
+  const { commentId } = req.params; // سنرسل معرف التعليق في الرابط
+
+  try {
+    const updatedTask = await Task.findOneAndUpdate(
+      { id: taskId },
+      { $pull: { comments: { _id: commentId } } }, // $pull تقوم بحذف العنصر المطابق للـ id من المصفوفة
+      { new: true }
+    );
+
+    if (!updatedTask) return res.status(404).json({ message: "Task not found" });
+
+    res.json({ message: "Comment deleted successfully" });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: "Failed to delete comment" });
+  }
+};
+
+// لا تنسى إضافة deleteTaskComment إلى module.exports في نهاية الملف
 module.exports = {
   createTask,
   getAllTasks,
@@ -264,4 +289,5 @@ module.exports = {
   resumeTaskTimer,
   resetTaskTimer,
   addTaskComment,
+  deleteTaskComment,
 };

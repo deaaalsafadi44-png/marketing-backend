@@ -100,6 +100,13 @@ router.post(
   authorize(["Admin", "Manager"]),
   tasksController.addTaskComment
 );
+/* DELETE COMMENT */
+router.delete(
+  "/:id/comments/:commentId",
+  authenticateToken,
+  authorize(["Admin", "Manager"]),
+  tasksController.deleteTaskComment
+);
 /* =========================
    DELETE TASK
    DELETE /tasks/:id
