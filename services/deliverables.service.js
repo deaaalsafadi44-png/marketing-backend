@@ -92,24 +92,19 @@ const getSubmissionsGroupedByTask = async () => {
         ratedByName: { $first: "$ratedByName" },
       },
     },
-    // ✅ الحل الجذري هنا: تحويل taskId من نص إلى ObjectId قبل عملية الـ lookup
-    {
-      $addFields: {
-        convertedTaskId: {
-          $convert: {
-            input: "$taskId",
-            to: "objectId",
-            onError: null, // في حال كان النص غير صالح لا يسبب خطأ
-            onNull: null
-          }
-        }
-      }
-    },
     {
       $lookup: {
-        from: "tasks", 
-        localField: "convertedTaskId", // نستخدم الحقل المحول حديثاً
-        foreignField: "_id",
+        from: "tasks", // تأكد 100% أن هذا هو اسم الـ collection في MongoDB
+        let: { tId: "$taskId" }, // نجعل taskId متاحاً داخل الـ pipeline
+        pipeline: [
+          { 
+            $match: { 
+              $expr: { 
+                $eq: [{ $toString: "$_id" }, { $toString: "$$tId" }] 
+              } 
+            } 
+          }
+        ],
         as: "taskDetails"
       }
     },
@@ -139,7 +134,6 @@ const getSubmissionsGroupedByTask = async () => {
     },
     { $sort: { createdAt: -1 } },
   ]);
-
   return submissions;
 };
 
