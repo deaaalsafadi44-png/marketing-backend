@@ -30,7 +30,7 @@ const getUserById = async (req, res) => {
 };
 
 /* ========================================================
-   UPDATE USER (النسخة الاحترافية - حل مشكلة المزامنة نهائياً)
+   UPDATE USER (تم التعديل لاستهداف حقل type في التاسكات)
 ======================================================== */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
@@ -45,31 +45,33 @@ const updateUser = async (req, res) => {
     const updated = await usersService.updateUser(userId, req.body);
     if (!updated) return res.status(404).json({ message: "User not found" });
 
-    // 3. مزامنة التاسكات القديمة
+    // 3. مزامنة التاسكات القديمة (تحديث حقل type وحقل workerName)
     try {
       const Task = require("../models/Task"); 
       
       const newName = req.body.name || oldUser.name;
+      // المسمى الوظيفي الجديد من الفورم
       const newJobTitle = req.body.jobTitle || oldUser.jobTitle;
 
-      // البحث عن التاسكات باستخدام الاسم (بشكل مرن) أو باستخدام الـ ID
+      // تحديث التاسكات المرتبطة بهذا المستخدم
       const syncResult = await Task.updateMany(
         { 
           $or: [
-            { workerName: oldUser.name },
-            { workerName: oldUser.name.trim() },
-            { workerId: userId } // الاعتماد على الـ ID لأنه لا يتغير أبداً
+            { workerId: userId },
+            { workerName: oldUser.name }
           ]
         }, 
         { 
           $set: { 
             workerName: newName,
-            workerJobTitle: newJobTitle 
+            // التعديل الجذري: تحديث حقل type لأن صور المونجو أظهرت أنه الحقل المستخدم
+            type: newJobTitle, 
+            workerJobTitle: newJobTitle // تحديث هذا أيضاً للاحتياط
           } 
         }
       );
 
-      console.log(`[Sync Success] User: ${oldUser.name} | Tasks Found: ${syncResult.matchedCount} | Tasks Updated: ${syncResult.modifiedCount}`);
+      console.log(`[Sync Success] User ID: ${userId} | Matched: ${syncResult.matchedCount} | Updated: ${syncResult.modifiedCount}`);
 
     } catch (syncErr) {
       console.error("Critical Task Sync Error:", syncErr.message);
