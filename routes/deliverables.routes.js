@@ -1,14 +1,13 @@
 const express = require("express");
 const deliverablesController = require("../controllers/deliverables.controller");
 const authenticateToken = require("../middlewares/authenticateToken");
-const upload = require("../middlewares/upload"); // ✅ موجود كما هو
+const upload = require("../middlewares/upload"); 
 
 const router = express.Router();
 
 /* =========================
    🆕 GET SUBMISSIONS (GROUPED BY TASK)
    GET /deliverables/submissions
-   ⚠️ يجب أن يكون قبل "/"
 ========================= */
 router.get(
   "/submissions",
@@ -24,6 +23,16 @@ router.post(
   "/:deliverableId/rate",
   authenticateToken,
   deliverablesController.rateDeliverable
+);
+
+/* =========================
+   🗑️ DELETE ENTIRE DELIVERABLE (كود التنظيف الذكي يستخدم هذا المسار)
+   DELETE /deliverables/:deliverableId
+========================= */
+router.delete(
+  "/:deliverableId",
+  authenticateToken,
+  deliverablesController.deleteDeliverable
 );
 
 /* =========================
