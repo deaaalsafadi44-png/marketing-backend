@@ -34,37 +34,42 @@ const getUserById = async (req, res) => {
 };
 
 /* =========================
-   UPDATE USER (Corrected Path)
+   UPDATE USER (Corrected Sync with $set)
 ========================= */
 const updateUser = async (req, res) => {
   const userId = Number(req.params.id);
   if (isNaN(userId)) return res.status(400).json({ message: "Invalid user id" });
 
   try {
-    // 1. جلب الاسم القديم قبل التعديل
+    // 1. جلب بيانات المستخدم القديمة قبل التعديل للبحث بها في التاسكات
     const oldUser = await usersService.getUserById(userId);
     if (!oldUser) return res.status(404).json({ message: "User not found" });
 
-    // 2. تحديث بيانات المستخدم (هذا الجزء ينجح في تغيير الباسورد)
+    // 2. تحديث بيانات المستخدم (مثل الباسورد والجوب الجديد)
     const updated = await usersService.updateUser(userId, req.body);
+    if (!updated) return res.status(404).json({ message: "User not found" });
 
-    // 3. تحديث التاسكات (تم تصحيح المسار هنا بناءً على الصورة)
+    // 3. تحديث التاسكات المرتبطة لضمان عدم اختفاء الجوب
     try {
-      // لاحظ المسار: تم تغييره إلى Task ليتوافق مع الملف الموجود في مجلد models
       const Task = require("../models/Task"); 
+
+      // نأخذ القيم الجديدة من req.body لضمان الدقة العالية
+      const newName = req.body.name || oldUser.name;
+      const newJobTitle = req.body.jobTitle || oldUser.jobTitle;
 
       if (req.body.jobTitle || req.body.name) {
         await Task.updateMany(
-          { workerName: oldUser.name }, 
+          { workerName: oldUser.name }, // البحث بالاسم القديم
           { 
-            workerJobTitle: updated.jobTitle || oldUser.jobTitle,
-            workerName: updated.name || oldUser.name 
+            $set: { 
+              workerName: newName,
+              workerJobTitle: newJobTitle 
+            } 
           }
         );
-        console.log("Sync success: Tasks updated for", updated.name);
+        console.log(`Sync success: Updated tasks for ${newName}`);
       }
     } catch (syncErr) {
-      // نضعها في catch منفصلة لكي لا ينهار السيرفر إذا فشل التزامن
       console.error("Sync failed, but user was updated:", syncErr.message);
     }
 
@@ -123,5 +128,5 @@ module.exports = {
   getUserById,
   updateUser,
   createUser,
-  deleteUser, // ✅ مهم جدًا
+  deleteUser,
 };
