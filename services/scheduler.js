@@ -60,16 +60,21 @@ const calculateNextRun = (frequency, lastNextRun) => {
 /**
  * المحرك الرئيسي
  */
+/**
+ * المحرك الرئيسي المطور
+ * يدعم التنفيذ لمرة واحدة أو التكرار بناءً على تاريخ محدد
+ */
 const checkScheduledTasks = async () => {
   console.log(`🔍 [Scheduler] Checking tasks at: ${new Date().toLocaleString()}`);
   try {
     const now = new Date();
     
-    // جلب القوالب التي حان موعدها
+    // 1. جلب القوالب التي حان موعدها (nextRun <= الآن) 
+    // أزلنا شرط frequency: { $ne: "none" } للسماح بتنفيذ المهام غير المكررة
     const scheduledTemplates = await Task.find({
       isScheduled: true,
       nextRun: { $lte: now },
-      frequency: { $ne: "none" }
+      nextRun: { $ne: null }
     });
 
     if (scheduledTemplates.length === 0) {
@@ -78,15 +83,24 @@ const checkScheduledTasks = async () => {
     }
 
     for (const template of scheduledTemplates) {
-      // 1. إنشاء النسخة التنفيذية
+      // 2. إنشاء النسخة التنفيذية المسندة للموظف
       await createInstanceFromTemplate(template);
 
-      // 2. تحديث موعد التنفيذ القادم
-      const nextRunDate = calculateNextRun(template.frequency, template.nextRun);
-      template.nextRun = nextRunDate;
+      // 3. إدارة منطق ما بعد التنفيذ (تكرار أم إيقاف)
+      if (template.frequency === "none" || !template.frequency) {
+        // إذا كانت المهمة لمرة واحدة فقط، نغلق القالب المجدول
+        template.isScheduled = false;
+        template.nextRun = null;
+        console.log(`✅ [Scheduler] Task "${template.title}" executed once and schedule finished.`);
+      } else {
+        // إذا كانت مكررة (يومي/أسبوعي/شهري)، نحسب التاريخ القادم
+        const nextRunDate = calculateNextRun(template.frequency, template.nextRun);
+        template.nextRun = nextRunDate;
+        console.log(`📅 [Scheduler] Task "${template.title}" updated for next recurrence: ${nextRunDate}`);
+      }
+
+      // حفظ حالة القالب الجديدة في قاعدة البيانات
       await template.save();
-      
-      console.log(`📅 [Scheduler] Next run for "${template.title}" updated to: ${nextRunDate}`);
     }
   } catch (error) {
     console.error("❌ [Scheduler] Critical engine error:", error);

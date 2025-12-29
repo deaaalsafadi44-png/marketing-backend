@@ -17,7 +17,7 @@ const calculateLiveTime = (task) => {
 };
 
 /* =========================
-   CREATE TASK (Updated for Scheduling)
+   CREATE TASK (Modified for Precise Scheduling)
 ========================= */
 const createTask = async (data) => {
   // نجلب الموظف من قاعدة البيانات باستخدام المعرف المرسل
@@ -27,28 +27,40 @@ const createTask = async (data) => {
     id: Math.floor(Date.now() / 1000),
     ...data,
     workerName: worker?.name || "Unknown",
-    workerJobTitle: worker?.dept || "No Job Title", 
+    workerJobTitle: worker?.dept || "No Job Title",
     createdAt: new Date().toISOString(),
     
-    // ✨ إضافة الحقول الجديدة لاستقبالها من الفرونت إند
+    // ✨ إدارة حقول الجدولة الجديدة بدقة
     isScheduled: data.isScheduled || false,
     frequency: data.frequency || "none",
-    nextRun: data.nextRun || null,
-    scheduledDay: data.scheduledDay || null,
+    
+    // المنطق الجديد: تاريخ التنفيذ القادم هو تاريخ البداية الذي حددته أنت
+    // وإذا لم يكن مجدولاً يظل فارغاً (null)
+    nextRun: data.isScheduled ? new Date(data.startDate || data.nextRun) : null,
+    
+    // الاحتفاظ بتاريخ البداية الأصلي للتوثيق
+    scheduledStartDate: data.startDate || null
   };
 
   return await Task.create(task);
 };
-
 /* =========================
-   GET ALL TASKS
+   GET ALL TASKS (المعدلة لإخفاء القوالب)
 ========================= */
 const getAllTasks = async (user) => {
   let tasks;
+  
+  // أضفنا شرط { isScheduled: { $ne: true } }
+  // وتعني: جلب المهام التي حقل isScheduled فيها "ليس" true
   if (user.role === "Employee") {
-    tasks = await Task.find({ workerId: user.id }, { _id: 0 });
+    tasks = await Task.find({ 
+      workerId: user.id, 
+      isScheduled: { $ne: true } 
+    }, { _id: 0 });
   } else {
-    tasks = await Task.find({}, { _id: 0 });
+    tasks = await Task.find({ 
+      isScheduled: { $ne: true } 
+    }, { _id: 0 });
   }
 
   // مخرجات معدلة لضمان ظهور الوقت الصحيح في القائمة حتى لو التايمر يعمل
@@ -57,7 +69,6 @@ const getAllTasks = async (user) => {
     return calculateLiveTime(taskObj);
   });
 };
-
 /* =========================
    GET TASK BY ID
 ========================= */
@@ -244,4 +255,5 @@ module.exports = {
   resetTaskTimer, 
   lockTask,
   unlockTask,
+  getScheduledTemplates,
 };
