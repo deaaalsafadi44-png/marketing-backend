@@ -17,7 +17,7 @@ const calculateLiveTime = (task) => {
 };
 
 /* =========================
-   CREATE TASK (Updated to include Job Title)
+   CREATE TASK (Updated for Scheduling)
 ========================= */
 const createTask = async (data) => {
   // نجلب الموظف من قاعدة البيانات باستخدام المعرف المرسل
@@ -27,9 +27,14 @@ const createTask = async (data) => {
     id: Math.floor(Date.now() / 1000),
     ...data,
     workerName: worker?.name || "Unknown",
-    // ✅ إضافة المسمى الوظيفي (dept) ليكون جزءاً من بيانات التاسك
     workerJobTitle: worker?.dept || "No Job Title", 
     createdAt: new Date().toISOString(),
+    
+    // ✨ إضافة الحقول الجديدة لاستقبالها من الفرونت إند
+    isScheduled: data.isScheduled || false,
+    frequency: data.frequency || "none",
+    nextRun: data.nextRun || null,
+    scheduledDay: data.scheduledDay || null,
   };
 
   return await Task.create(task);
@@ -72,7 +77,7 @@ const getTaskById = async (taskId) => {
 };
 
 /* =========================
-   UPDATE TASK (Updated for Job Title)
+   UPDATE TASK (Updated for Scheduling)
 ========================= */
 const updateTask = async (taskId, data) => {
   // ✅ إذا تم تغيير الموظف (workerId)، نحدث الاسم والمسمى الوظيفي معاً
@@ -80,11 +85,11 @@ const updateTask = async (taskId, data) => {
     const worker = await User.findOne({ id: Number(data.workerId) });
     if (worker) {
       data.workerName = worker.name;
-      // ✅ تحديث المسمى الوظيفي للموظف الجديد
       data.workerJobTitle = worker.dept; 
     }
   }
 
+  // الحقول الجديدة سيتم استلامها تلقائياً عبر {...data} ولكننا نمررها ضمن $set للتأكيد
   return await Task.findOneAndUpdate(
     { id: taskId },
     { $set: data },
@@ -217,7 +222,13 @@ const deleteTask = async (taskId) => {
   // 2. حذف التاسك نفسه
   return await Task.findOneAndDelete({ id: taskId });
 };
-
+/* =========================
+   GET ALL SCHEDULED TEMPLATES (Admin Only)
+========================= */
+const getScheduledTemplates = async () => {
+  // نجلب فقط المهام التي تعمل كـ "قوالب مجدولة"
+  return await Task.find({ isScheduled: true }, { _id: 0 });
+};
 module.exports = {
   createTask,
   getAllTasks,

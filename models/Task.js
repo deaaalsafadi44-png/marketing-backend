@@ -13,7 +13,8 @@ const TaskSchema = new mongoose.Schema(
     workerName: String,
     timeSpent: Number,
     createdAt: String,
-workerJobTitle: { type: String, default: "" },
+    workerJobTitle: { type: String, default: "" },
+
     /* =====================================================
         ⭐ NEW — PROFESSIONAL TIMER
     ===================================================== */
@@ -26,20 +27,31 @@ workerJobTitle: { type: String, default: "" },
     },
 
     // 🔒 التعديل الجديد هنا:
-    isLocked: { type: Boolean, default: false }, 
+    isLocked: { type: Boolean, default: false },
 
     /* =====================================================
         ⭐ NEW — COMMENTS ARRAY (Admin & Manager)
-        ✅ إضافة حقل التعليقات دون المساس بالبيانات القديمة
     ===================================================== */
     comments: [
       {
-        text: { type: String, required: true }, // نص التعليق
-        author: { type: String, required: true }, // اسم الكاتب (Admin/Manager)
-        role: { type: String }, // دور الكاتب للتأكيد
-        createdAt: { type: Date, default: Date.now }, // وقت التعليق تلقائياً
-      }
+        text: { type: String, required: true },
+        author: { type: String, required: true },
+        role: { type: String },
+        createdAt: { type: Date, default: Date.now },
+      },
     ],
+
+    /* =====================================================
+        🕒 NEW — SCHEDULED TASKS CONFIGURATION
+    ===================================================== */
+    isScheduled: { type: Boolean, default: false }, 
+    frequency: { 
+      type: String, 
+      enum: ["none", "daily", "weekly", "monthly"], 
+      default: "none" 
+    }, 
+    nextRun: { type: Date, default: null }, 
+    scheduledDay: { type: Number, default: null },
   },
   { versionKey: false }
 );

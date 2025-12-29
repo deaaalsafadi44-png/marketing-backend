@@ -23,7 +23,7 @@ console.log("optionsRoutes typeof:", typeof optionsRoutes);
 console.log("settingsRoutes typeof:", typeof settingsRoutes);
 console.log("reportsRoutes typeof:", typeof reportsRoutes);
 console.log("deliverablesRoutes typeof:", typeof deliverablesRoutes);
-
+const scheduler = require("./services/scheduler"); // تأكد من صحة المسار للملف الذي أنشأناه
 console.log("authRoutes keys:", Object.keys(authRoutes || {}));
 console.log("deliverablesRoutes keys:", Object.keys(deliverablesRoutes || {}));
 /* 🔍 END DEBUG */
