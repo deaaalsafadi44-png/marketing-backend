@@ -1,6 +1,5 @@
-const Task = require("../models/Task"); // T كبيرة لتطابق اسم الملف Task.js
-const User = require("../models/User"); // U كبيرة لتطابق اسم الملف User.js
-
+const Task = require("../models/Task"); // تأكد من حرف T كبير
+const User = require("../models/User"); // تأكد من حرف U كبير
 /**
  * وظيفة لاستنساخ مهمة من القالب المجدول
  * تأخذ القالب (Template) وتنشئ منه مهمة جديدة للموظف
