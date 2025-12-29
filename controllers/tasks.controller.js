@@ -312,6 +312,22 @@ const unlockTask = async (req, res) => {
     res.status(500).json({ message: "Failed to unlock task" });
   }
 };
+/* =====================================================
+    📅 GET ALL SCHEDULED TEMPLATES
+    GET /tasks/scheduled/all
+===================================================== */
+const getScheduledTasks = async (req, res) => {
+  try {
+    // البحث فقط عن المهام التي تم تحديدها كقوالب مجدولة
+    const templates = await Task.find({ isScheduled: true });
+    
+    // إرسال البيانات للفرونت إند
+    res.json(templates);
+  } catch (err) {
+    console.error("Error fetching scheduled tasks:", err);
+    res.status(500).json({ message: "Failed to load scheduled templates" });
+  }
+};
 // لا تنسى إضافة deleteTaskComment إلى module.exports في نهاية الملف
 module.exports = {
   createTask,
@@ -320,6 +336,7 @@ module.exports = {
   updateTask,
   saveTaskTime,
   deleteTask,
+  getScheduledTasks,
 
   // ⭐ NEW EXPORTS
   startTaskTimer,

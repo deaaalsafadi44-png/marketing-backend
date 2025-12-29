@@ -16,19 +16,15 @@ router.post(
   tasksController.createTask
 );
 // جلب جميع القوالب المجدولة (للأدمن والمدير فقط)
+/* =========================
+   جلب جميع القوالب المجدولة
+   يجب أن يكون هذا المسار فوق مسارات الـ :id لتجنب التداخل
+========================= */
 router.get(
   "/scheduled/all", 
-  authenticateToken, // استخدمنا الاسم الموجود في ملفك بدلاً من authMiddleware
-  authorize(["Admin", "Manager"]), // أضفنا التحقق من الصلاحية كما في باقي مساراتك
-  async (req, res) => {
-    try {
-      const tasksService = require("../services/tasksService");
-      const templates = await tasksService.getScheduledTemplates();
-      res.json(templates);
-    } catch (error) {
-      res.status(500).json({ message: "خطأ في جلب القوالب المجدولة" });
-    }
-  }
+  authenticateToken, 
+  authorize(["Admin", "Manager"]), 
+  tasksController.getScheduledTasks // ✅ الربط المباشر مع الدالة في الـ Controller
 );
 /* =========================
    GET ALL TASKS

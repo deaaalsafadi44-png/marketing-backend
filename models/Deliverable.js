@@ -29,7 +29,7 @@ const DeliverableSchema = new mongoose.Schema(
         originalName: { type: String, required: true },
         publicId: { type: String, required: true },
 
-        // ⭐ إضافات ضرورية للعرض
+      
         mimeType: { type: String },
         resource_type: { type: String },
         format: { type: String },
@@ -37,9 +37,6 @@ const DeliverableSchema = new mongoose.Schema(
       },
     ],
 
-    /* =====================================================
-       ⭐ NEW — RATING SYSTEM (Admin / Manager)
-    ===================================================== */
     rating: {
       type: Number,
       min: 0,
