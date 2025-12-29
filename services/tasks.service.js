@@ -57,11 +57,17 @@ const getAllTasks = async (user) => {
    GET TASK BY ID
 ========================= */
 const getTaskById = async (taskId) => {
-  const task = await Task.findOne({ id: taskId }, { _id: 0 });
+  // أزلنا الـ { _id: 0 } لضمان جلب كل الحقول بدون استثناء
+  const task = await Task.findOne({ id: taskId }); 
   if (!task) return null;
 
-  // تحويل لـ Object وحساب الوقت الحي قبل الإرسال للفرونت إيند
   const taskObj = task.toObject();
+  
+  // تأمين وجود القيمة حتى لو لم تكن في الداتا القديمة
+  if (taskObj.isLocked === undefined) {
+      taskObj.isLocked = taskObj.status === "Completed";
+  }
+
   return calculateLiveTime(taskObj);
 };
 
