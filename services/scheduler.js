@@ -68,84 +68,108 @@ const calculateNextRun = (frequency, lastNextRun) => {
 /**
  * المحرك الرئيسي
  */
+const Task = require("../models/Task");
+const { sendNotification } = require("./notifications.service");
+const Notification = require("../models/Notification");
+
+let isProcessing = false;
+
+const calculateNextRun = (frequency, lastNextRun) => {
+  const now = new Date();
+  // نضمن أن البداية هي الوقت الحالي لنتجنب أي تاريخ قديم عالق
+  let nextDate = lastNextRun ? new Date(lastNextRun) : new Date();
+
+  // إذا كان التاريخ المحسوب لا يزال في الماضي، نقفز للمستقبل بناءً على التكرار
+  while (nextDate <= now) {
+    if (frequency === "daily") nextDate.setDate(nextDate.getDate() + 1);
+    else if (frequency === "weekly") nextDate.setDate(nextDate.getDate() + 7);
+    else if (frequency === "monthly") nextDate.setMonth(nextDate.getMonth() + 1);
+    else return null;
+  }
+  return nextDate;
+};
+
 const checkScheduledTasks = async () => {
   if (isProcessing) return;
   isProcessing = true;
 
   try {
     const now = new Date();
-    // زيادة هامش الأمان لضمان عدم تكرار المهام في نفس الدقيقة
-    const safetyMargin = new Date(now.getTime() + 2000); 
 
-    // 1. البحث عن مهمة واحدة مستحقة تماماً
-    const template = await Task.findOne({
-      isScheduled: true,
-      nextRun: { $lte: now },
-      nextRun: { $ne: null },
-      isLocked: { $ne: true }
-    });
+    // 1. البحث عن "قالب" واحد فقط مستحق
+    // أضفنا شرط isLocked و status لضمان عدم لمس المهام التنفيذية
+    const template = await Task.findOneAndUpdate(
+      {
+        isScheduled: true,
+        nextRun: { $lte: now },
+        isLocked: { $ne: true }, // حماية من النسخ الأخرى
+        frequency: { $ne: "none" } 
+      },
+      { $set: { isLocked: true } }, // قفل المهمة فوراً
+      { new: true }
+    );
 
     if (!template) {
       isProcessing = false;
       return;
     }
 
-    // 2. حساب الموعد القادم "فوراً" وقبل أي إجراء آخر
-    // نمرر التاريخ الحالي + يوم لضمان القفز الفعلي للمستقبل
-    const nextRunDate = calculateNextRun(template.frequency, new Date());
+    // 2. حساب الموعد القادم (سيقفز دائماً للمستقبل)
+    const nextRunDate = calculateNextRun(template.frequency, template.nextRun);
 
-    // 3. 🔒 التحديث الذري: تغيير الموعد في قاعدة البيانات "قبل" إنشاء النسخة
-    // هذا هو أهم سطر لمنع الـ 22 نسخة
-    const updated = await Task.findOneAndUpdate(
-      { 
-        _id: template._id, 
-        nextRun: template.nextRun // التأكد أننا لا زلنا في نفس الدورة
-      },
+    // 3. التحديث الحاسم: نغير موعد القالب "قبل" خلق النسخة الجديدة
+    await Task.updateOne(
+      { _id: template._id },
       { 
         $set: { 
           nextRun: nextRunDate, 
           isScheduled: nextRunDate !== null,
           isLocked: false 
         } 
-      },
-      { new: true }
+      }
     );
 
-    // إذا فشل التحديث أو لم يجد المهمة، نخرج فوراً دون عمل أي شيء
-    if (!updated) {
-      isProcessing = false;
-      return;
-    }
+    // 4. إنشاء النسخة التنفيذية (الآن هي آمنة ولن تتكرر)
+    const newInstanceId = Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000);
+    const newTask = await Task.create({
+      ...template.toObject(),
+      _id: undefined, // ترك مونجو ينشئ ID جديد
+      id: newInstanceId,
+      isScheduled: false, // 🛑 أهم سطر: النسخة الناتجة ليست جدولاً
+      isLocked: false,
+      status: "Pending",
+      createdAt: new Date().toISOString(),
+      nextRun: null // النسخة التنفيذية لا تملك موعداً قادماً
+    });
 
-    // 4. الآن فقط، وبعد أن ضمنا أن الموعد في قاعدة البيانات أصبح في "المستقبل"
-    // نقوم بإنشاء النسخة وإرسال الإشعارات
-    console.log(`✅ [Scheduler] Success: Next run for ${template.title} set to ${nextRunDate}`);
-    
-    const newInstance = await createInstanceFromTemplate(template);
-    if (newInstance) {
-      await Promise.allSettled([
-        Notification.create({
-          recipientId: newInstance.workerId,
-          title: "⏰ موعد مهمة مجدولة",
-          body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
-          url: `/tasks/view/${newInstance.id}`
-        }),
-        sendNotification(newInstance.workerId, {
-          title: "⏰ مهمة مجدولة جديدة",
-          body: `المهمة: ${newInstance.title}`,
-          url: `/tasks/view/${newInstance.id}`
-        })
-      ]);
+    if (newTask) {
+      console.log(`✅ [Scheduler] Created instance: ${newTask.title}`);
+      // إرسال الإشعارات مرة واحدة فقط
+      await Notification.create({
+        recipientId: newTask.workerId,
+        title: "⏰ مهمة مجدولة",
+        body: `تذكير: موعد تنفيذ "${newTask.title}"`,
+        url: `/tasks/view/${newTask.id}`
+      });
+      
+      sendNotification(newTask.workerId, {
+        title: "⏰ مهمة مجدولة جديدة",
+        body: newTask.title,
+        url: `/tasks/view/${newTask.id}`
+      }).catch(() => {});
     }
 
   } catch (error) {
-    console.error("❌ [Scheduler] Error:", error);
+    console.error("❌ Scheduler Error:", error);
+    await Task.updateMany({ isLocked: true }, { $set: { isLocked: false } });
   } finally {
     isProcessing = false;
-    // اجعل المهلة أطول قليلاً (مثلاً 30 ثانية) لتجنب الضغط على السيرفر
-    setTimeout(checkScheduledTasks, 30000); 
   }
 };
+
+// تشغيل كل دقيقة فقط
+setInterval(checkScheduledTasks, 60000);
+module.exports = { checkScheduledTasks };
 // إعدادات التشغيل
 setInterval(checkScheduledTasks, 60000); 
 setTimeout(checkScheduledTasks, 10000); // زيادة المهلة لـ 10 ثوانٍ لضمان استقرار السيرفر
