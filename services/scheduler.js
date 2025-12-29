@@ -4,11 +4,12 @@ const Notification = require("../models/Notification");
 
 let isProcessing = false;
 
-const calculateNextRun = (frequency, lastNextRun) => {
+const calculateNextRun = (frequency, baseDate) => {
+    // نستخدم التاريخ الذي نمرره كقاعدة (تاريخ المهمة الأصلي)
+    let nextDate = new Date(baseDate);
     const now = new Date();
-    // نستخدم الوقت الحالي كمرجع أساسي للحساب لضمان عدم التعلق في الماضي
-    let nextDate = lastNextRun ? new Date(lastNextRun) : new Date();
 
+    // القفز بالوقت حتى يتجاوز الوقت الحالي للسيرفر حتماً
     while (nextDate <= now) {
         if (frequency === "daily") nextDate.setDate(nextDate.getDate() + 1);
         else if (frequency === "weekly") nextDate.setDate(nextDate.getDate() + 7);
@@ -24,16 +25,17 @@ const checkScheduledTasks = async () => {
 
     try {
         const now = new Date();
-        // أضفنا هامش 30 ثانية لتلافي فروقات التوقيت البسيطة بين السيرفرات
-        const searchTime = new Date(now.getTime() + 30000); 
+        // 💡 إضافة هامش كبير (4 ساعات) للبحث في المهام التي قد تكون عالقة بسبب فروق التوقيت
+        // هذا سيجعل السيرفر يرى المهام التي جدولتها بتوقيتك المحلي
+        const forwardLook = new Date(now.getTime() + (4 * 60 * 60 * 1000)); 
 
-        console.log(`🔍 [Scheduler] Checking tasks for time <= ${searchTime.toISOString()}`);
+        console.log(`🔎 [Scheduler] Server Time: ${now.toISOString()}`);
+        console.log(`🔎 [Scheduler] Looking for tasks due before: ${forwardLook.toISOString()}`);
 
-        // 1. البحث عن قالب مستحق - تم تبسيط الفلتر لضمان الإمساك بالمهمة
         const template = await Task.findOneAndUpdate(
             {
                 isScheduled: true,
-                nextRun: { $lte: searchTime },
+                nextRun: { $lte: forwardLook }, // البحث بهامش وقت واسع
                 isLocked: { $ne: true }
             },
             { $set: { isLocked: true } },
@@ -41,23 +43,22 @@ const checkScheduledTasks = async () => {
         );
 
         if (!template) {
-            // console.log("ℹ️ [Scheduler] No pending scheduled tasks found.");
             isProcessing = false;
             return;
         }
 
-        console.log(`🎯 [Scheduler] Found task: "${template.title}" | Original NextRun: ${template.nextRun}`);
+        console.log(`🎯 [Scheduler] Executing: "${template.title}" (Original Due: ${template.nextRun})`);
 
-        // 2. حساب الموعد القادم
+        // حساب الموعد القادم بناءً على وقت السيرفر الحالي لضمان عدم التكرار
         const nextRunDate = calculateNextRun(template.frequency, template.nextRun);
 
-        // 3. إنشاء النسخة التنفيذية فوراً
+        // إنشاء النسخة التنفيذية
         const newInstanceId = Math.floor(Date.now() / 1000);
         const instanceData = {
             ...template.toObject(),
             _id: undefined, 
             id: newInstanceId,
-            isScheduled: false, // النسخة ليست مجدولة
+            isScheduled: false,
             isLocked: false,
             status: "Pending",
             nextRun: null,
@@ -65,9 +66,8 @@ const checkScheduledTasks = async () => {
         };
 
         const newInstance = await Task.create(instanceData);
-        console.log(`✅ [Scheduler] Created Instance ID: ${newInstanceId}`);
 
-        // 4. تحديث القالب للموعد القادم وفتح القفل
+        // تحديث القالب للموعد القادم
         await Task.updateOne(
             { _id: template._id },
             { 
@@ -79,31 +79,30 @@ const checkScheduledTasks = async () => {
             }
         );
 
-        // 5. إرسال الإشعارات
         if (newInstance) {
+            console.log(`✅ [Scheduler] Instance Created Successfully!`);
+            // إرسال الإشعارات
             await Notification.create({
                 recipientId: newInstance.workerId,
-                title: "⏰ مهمة مجدولة جديدة",
-                body: `حان موعد تنفيذ: ${newInstance.title}`,
+                title: "⏰ مهمة مجدولة",
+                body: `حان موعد: ${newInstance.title}`,
                 url: `/tasks/view/${newInstance.id}`
             });
 
             sendNotification(newInstance.workerId, {
                 title: "⏰ مهمة مجدولة",
                 body: newInstance.title
-            }).catch(err => console.error("Notification Error:", err));
+            }).catch(() => {});
         }
 
     } catch (error) {
         console.error("❌ [Scheduler] Error:", error);
-        // فك قفل أي مهمة علقت بسبب الخطأ
         await Task.updateMany({ isLocked: true }, { $set: { isLocked: false } });
     } finally {
         isProcessing = false;
     }
 };
 
-// فحص كل 30 ثانية ليكون أسرع في الاستجابة
+// فحص كل 30 ثانية
 setInterval(checkScheduledTasks, 30000);
-
 module.exports = { checkScheduledTasks };
