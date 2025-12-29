@@ -199,11 +199,6 @@ const lockTask = async (taskId) => {
   await task.save();
   return task.toObject();
 };
-  task.isLocked = true;
-  task.status = "Completed"; 
-  await task.save();
-  return task.toObject();
-};
 
 const unlockTask = async (taskId) => {
   const task = await Task.findOne({ id: taskId });
