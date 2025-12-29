@@ -291,17 +291,16 @@ const lockTask = async (req, res) => {
   }
 };
 
-/* =====================================================
-    🔓 NEW — UNLOCK TASK (Admin Only)
-    POST /tasks/:id/unlock
-===================================================== */
+/* =========================
+    🔓 UNLOCK TASK (Admin Only)
+========================= */
 const unlockTask = async (req, res) => {
   const taskId = Number(req.params.id);
   if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
 
-  // حماية إضافية: التأكد أن القادم هو أدمن
-if (req.user.role.toLowerCase() !== "admin") { // ✅ سيقبل Admin أو admin
-//     return res.status(403).json({ message: "Only Admin can unlock tasks" });
+  // ✅ التصحيح: يجب إنهاء الدالة بـ return إذا لم يكن المستخدم أدمن
+  if (req.user.role.toLowerCase() !== "admin") {
+    return res.status(403).json({ message: "Only Admin can unlock tasks" });
   }
 
   try {
