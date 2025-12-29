@@ -127,6 +127,10 @@ const checkScheduledTasks = async () => {
 checkScheduledTasks();
 
 // ثم ضبط التكرار كل ساعة
-setInterval(checkScheduledTasks, 3600000);
+// --- التعديل هنا ---
+
+// بدلاً من 3600000 (ساعة)
+// نجعلها 60000 (التي تعادل 60 ثانية / دقيقة واحدة)
+setInterval(checkScheduledTasks, 60000); 
 
 module.exports = { checkScheduledTasks };
