@@ -70,26 +70,44 @@ const checkScheduledTasks = async () => {
   try {
     const now = new Date();
     
-    // 1. جلب القوالب التي حان موعدها (nextRun <= الآن) 
-    // أزلنا شرط frequency: { $ne: "none" } للسماح بتنفيذ المهام غير المكررة
+    // 1. جلب القوالب التي حان موعدها
     const scheduledTemplates = await Task.find({
       isScheduled: true,
       nextRun: { $lte: now },
       nextRun: { $ne: null }
     });
 
-    if (scheduledTemplates.length === 0) {
-      console.log("ℹ️ [Scheduler] No tasks due for execution.");
-      return;
-    }
+    if (scheduledTemplates.length === 0) return;
 
     for (const template of scheduledTemplates) {
-      // 2. إنشاء النسخة التنفيذية المسندة للموظف
+      // 🛑 الخطوة الأهم: تحديث الموعد القادم "أولاً" في الذاكرة لضمان عدم التكرار
+      let nextRunDate = null;
+      let shouldStillBeScheduled = true;
+
+      if (template.frequency === "none" || !template.frequency) {
+        shouldStillBeScheduled = false;
+        nextRunDate = null;
+      } else {
+        nextRunDate = calculateNextRun(template.frequency, template.nextRun);
+      }
+
+      // تحديث القالب في قاعدة البيانات فوراً قبل أي عملية أخرى
+      await Task.updateOne(
+        { _id: template._id },
+        { 
+          $set: { 
+            nextRun: nextRunDate, 
+            isScheduled: shouldStillBeScheduled 
+          } 
+        }
+      );
+
+      // 2. الآن ننشئ النسخة لمرة واحدة فقط
       const newInstance = await createInstanceFromTemplate(template);
 
-      // ✨ [إضافة جديدة] إرسال الإشعارات الآن لأن المهمة ظهرت للموظف فعلياً
+      // 3. إرسال الإشعارات للنسخة الجديدة فقط
       if (newInstance) {
-        // أ- إشعار الجرس (Database Notification)
+        // إشعار الجرس
         await Notification.create({
           recipientId: newInstance.workerId,
           title: "⏰ موعد مهمة مجدولة",
@@ -97,7 +115,7 @@ const checkScheduledTasks = async () => {
           url: `/tasks/view/${newInstance.id}`
         }).catch(err => console.error("❌ Database Notification Error:", err));
 
-        // ب- إشعار الـ Push للمتصفح
+        // إشعار الـ Push
         sendNotification(newInstance.workerId, {
           title: "⏰ مهمة مجدولة جديدة",
           body: `المهمة: ${newInstance.title}\nالشركة: ${newInstance.company}`,
@@ -105,18 +123,7 @@ const checkScheduledTasks = async () => {
         }).catch(err => console.error("❌ Push Notification Error:", err));
       }
 
-      // 3. إدارة منطق ما بعد التنفيذ (تكرار أم إيقاف)
-      if (template.frequency === "none" || !template.frequency) {
-        template.isScheduled = false;
-        template.nextRun = null;
-        console.log(`✅ [Scheduler] Task "${template.title}" executed once and schedule finished.`);
-      } else {
-        const nextRunDate = calculateNextRun(template.frequency, template.nextRun);
-        template.nextRun = nextRunDate;
-        console.log(`📅 [Scheduler] Task "${template.title}" updated for next recurrence: ${nextRunDate}`);
-      }
-
-      await template.save();
+      console.log(`✅ [Scheduler] Successfully processed and notified for: ${template.title}`);
     }
   } catch (error) {
     console.error("❌ [Scheduler] Critical engine error:", error);
