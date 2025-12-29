@@ -74,83 +74,86 @@ const checkScheduledTasks = async () => {
 
   try {
     const now = new Date();
-    
-    // 1. جلب المهام المستحقة فقط
-    const scheduledTemplates = await Task.find({
-      isScheduled: true,
-      nextRun: { $lte: now },
-      nextRun: { $ne: null }
-    });
 
-    if (scheduledTemplates.length === 0) return;
+    // الخطوة 1: "اصطياد" مهمة واحدة فقط وتحديثها فوراً (Atomic Operation)
+    // هذا يضمن أن نسخة واحدة فقط من السيرفر ستمسك بالمهمة
+    const template = await Task.findOneAndUpdate(
+      {
+        isScheduled: true,
+        nextRun: { $lte: now },
+        nextRun: { $ne: null },
+        // إضافة شرط إضافي لضمان عدم دخول أي نسخة أخرى
+        isLocked: { $ne: true } 
+      },
+      { 
+        $set: { isLocked: true } // قفل المهمة مؤقتاً أثناء المعالجة
+      },
+      { new: true }
+    );
 
-    for (const template of scheduledTemplates) {
-      try {
-        let nextRunDate = null;
-        let shouldStillBeScheduled = true;
-
-        if (!template.frequency || template.frequency === "none") {
-          shouldStillBeScheduled = false;
-        } else {
-          nextRunDate = calculateNextRun(template.frequency, template.nextRun);
-        }
-
-        // 2. 🛡️ القفل الذري (Atomic Lock):
-        // نحاول تحديث المهمة بشرط أن التاريخ لم يتغير منذ أن قرأناه
-        // إذا نجحت نسخة واحدة من السيرفر في التحديث، ستفشل النسخة الأخرى
-        const updatedTemplate = await Task.findOneAndUpdate(
-          { 
-            _id: template._id, 
-            nextRun: template.nextRun, // أهم شرط لمنع التكرار
-            isScheduled: true 
-          },
-          { 
-            $set: { 
-              nextRun: nextRunDate, 
-              isScheduled: shouldStillBeScheduled 
-            } 
-          },
-          { new: true }
-        );
-
-        // إذا كان updatedTemplate فارغاً، فهذا يعني أن نسخة سيرفر أخرى سبقتنا
-        if (!updatedTemplate) {
-          console.log(`⚠️ [Scheduler] Skipping ${template.title} - processed by another instance.`);
-          continue; 
-        }
-
-        // 3. إنشاء النسخة التنفيذية (تتم مرة واحدة فقط الآن)
-        const newInstance = await createInstanceFromTemplate(template);
-
-        if (newInstance) {
-          console.log(`✅ [Scheduler] Created: ${template.title}`);
-
-          // إشعار الجرس والـ Push
-          await Promise.allSettled([
-            Notification.create({
-              recipientId: newInstance.workerId,
-              title: "⏰ موعد مهمة مجدولة",
-              body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
-              url: `/tasks/view/${newInstance.id}`
-            }),
-            sendNotification(newInstance.workerId, {
-              title: "⏰ مهمة مجدولة جديدة",
-              body: `المهمة: ${newInstance.title}`,
-              url: `/tasks/view/${newInstance.id}`
-            })
-          ]);
-        }
-      } catch (loopError) {
-        console.error("❌ Loop Error:", loopError);
-      }
+    if (!template) {
+      isProcessing = false;
+      return; // لا يوجد مهام مستحقة حالياً
     }
+
+    console.log(`🚀 [Scheduler] Instance ${process.env.RENDER_INSTANCE_ID || 'Local'} grabbed: ${template.title}`);
+
+    try {
+      let nextRunDate = null;
+      let shouldStillBeScheduled = true;
+
+      if (!template.frequency || template.frequency === "none") {
+        shouldStillBeScheduled = false;
+      } else {
+        nextRunDate = calculateNextRun(template.frequency, template.nextRun);
+      }
+
+      // الخطوة 2: إنشاء النسخة التنفيذية
+      const newInstance = await createInstanceFromTemplate(template);
+
+      // الخطوة 3: تحديث الموعد القادم وفتح القفل
+      await Task.updateOne(
+        { _id: template._id },
+        { 
+          $set: { 
+            nextRun: nextRunDate, 
+            isScheduled: shouldStillBeScheduled,
+            isLocked: false // فتح القفل للمرة القادمة
+          } 
+        }
+      );
+
+      if (newInstance) {
+        // إرسال الإشعارات (مرة واحدة فقط لأننا في نسخة سيرفر واحدة فائزة)
+        await Promise.allSettled([
+          Notification.create({
+            recipientId: newInstance.workerId,
+            title: "⏰ موعد مهمة مجدولة",
+            body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
+            url: `/tasks/view/${newInstance.id}`
+          }),
+          sendNotification(newInstance.workerId, {
+            title: "⏰ مهمة مجدولة جديدة",
+            body: `المهمة: ${newInstance.title}`,
+            url: `/tasks/view/${newInstance.id}`
+          })
+        ]);
+      }
+    } catch (innerError) {
+      // في حال حدث خطأ، يجب فتح القفل لكي تحاول النسخة القادمة معالجتها
+      await Task.updateOne({ _id: template._id }, { $set: { isLocked: false } });
+      throw innerError;
+    }
+
   } catch (error) {
-    console.error("❌ Engine error:", error);
+    console.error("❌ [Scheduler] Engine error:", error);
   } finally {
     isProcessing = false;
+    // إعادة تشغيل الفحص فوراً للتأكد من عدم وجود مهام أخرى مستحقة
+    // (لأننا عالجنا مهمة واحدة فقط لضمان الأمان)
+    setTimeout(checkScheduledTasks, 1000); 
   }
 };
-
 // إعدادات التشغيل
 setInterval(checkScheduledTasks, 60000); 
 setTimeout(checkScheduledTasks, 10000); // زيادة المهلة لـ 10 ثوانٍ لضمان استقرار السيرفر
