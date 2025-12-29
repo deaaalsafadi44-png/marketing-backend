@@ -82,49 +82,66 @@ const checkScheduledTasks = async () => {
     }
 
     for (const template of scheduledTemplates) {
-      let nextRunDate = null;
-      let shouldStillBeScheduled = true;
+      try {
+        // 🛑 التعديل الأهم: حساب الموعد القادم أولاً
+        let nextRunDate = null;
+        let shouldStillBeScheduled = true;
 
-      // حساب الموعد القادم
-      if (template.frequency === "none" || !template.frequency) {
-        shouldStillBeScheduled = false;
-        nextRunDate = null;
-      } else {
-        nextRunDate = calculateNextRun(template.frequency, template.nextRun);
-      }
-
-      // 🛑 تحديث القالب فوراً لكسر حلقة التكرار
-      await Task.updateOne(
-        { _id: template._id },
-        { 
-          $set: { 
-            nextRun: nextRunDate, 
-            isScheduled: shouldStillBeScheduled 
-          } 
+        if (template.frequency === "none" || !template.frequency) {
+          shouldStillBeScheduled = false;
+          nextRunDate = null;
+        } else {
+          // تأكد أن calculateNextRun تستخدم منطق الـ while للقفز للمستقبل
+          nextRunDate = calculateNextRun(template.frequency, template.nextRun);
         }
-      );
 
-      // 2. إنشاء النسخة التنفيذية
-      const newInstance = await createInstanceFromTemplate(template);
+        // 2. تحديث القالب في قاعدة البيانات "بشرط" أن لا يكون قد تم تحديثه من قبل
+        // نستخدم findOneAndUpdate لضمان أننا نحدث المهمة ونحجزها في نفس اللحظة
+        const updatedTemplate = await Task.findOneAndUpdate(
+          { 
+            _id: template._id, 
+            nextRun: template.nextRun // شرط إضافي لضمان عدم التكرار
+          },
+          { 
+            $set: { 
+              nextRun: nextRunDate, 
+              isScheduled: shouldStillBeScheduled 
+            } 
+          },
+          { new: true } // ليعيد لنا الوثيقة بعد التحديث
+        );
 
-      // 3. إرسال الإشعارات
-      if (newInstance) {
-        // إشعار الجرس
-        await Notification.create({
-          recipientId: newInstance.workerId,
-          title: "⏰ موعد مهمة مجدولة",
-          body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
-          url: `/tasks/view/${newInstance.id}`
-        }).catch(err => console.error("❌ Notification Error:", err));
+        // إذا لم يجد الوثيقة بهذا التاريخ (معناه تم تحديثها من دورة سابقة)، تخطاها فوراً
+        if (!updatedTemplate) {
+          console.log(`⚠️ [Scheduler] Skipping already processed task: ${template.title}`);
+          continue; 
+        }
 
-        // إشعار الـ Push
-        sendNotification(newInstance.workerId, {
-          title: "⏰ مهمة مجدولة جديدة",
-          body: `المهمة: ${newInstance.title}\nالشركة: ${newInstance.company}`,
-          url: `/tasks/view/${newInstance.id}`
-        }).catch(err => console.error("❌ Push Error:", err));
+        // 3. الآن وبعد أن "حجزنا" التحديث بنجاح، ننشئ النسخة لمرة واحدة فقط
+        const newInstance = await createInstanceFromTemplate(template);
+
+        // 4. إرسال الإشعارات
+        if (newInstance) {
+          // إشعار الجرس
+          await Notification.create({
+            recipientId: newInstance.workerId,
+            title: "⏰ موعد مهمة مجدولة",
+            body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
+            url: `/tasks/view/${newInstance.id}`
+          }).catch(err => console.error("❌ Notification Error:", err));
+
+          // إشعار الـ Push
+          sendNotification(newInstance.workerId, {
+            title: "⏰ مهمة مجدولة جديدة",
+            body: `المهمة: ${newInstance.title}\nالشركة: ${newInstance.company}`,
+            url: `/tasks/view/${newInstance.id}`
+          }).catch(err => console.error("❌ Push Error:", err));
+        }
+
+        console.log(`✅ [Scheduler] Processed and rescheduled: ${template.title}`);
+      } catch (loopError) {
+        console.error(`❌ [Scheduler] Error in task ${template.title}:`, loopError);
       }
-      console.log(`✅ [Scheduler] Processed: ${template.title}`);
     }
   } catch (error) {
     console.error("❌ [Scheduler] Engine error:", error);
