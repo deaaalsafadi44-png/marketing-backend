@@ -1,9 +1,9 @@
 const Task = require("../models/Task"); 
 const User = require("../models/User"); 
-const { sendNotification } = require("./notifications.service"); // خدمة الـ Push
-const Notification = require("../models/Notification"); // موديل إشعارات الجرس
+const { sendNotification } = require("./notifications.service"); 
+const Notification = require("../models/Notification"); 
 
-// 🛑 متغير لمنع التداخل داخل نفس نسخة السيرفر
+// 🛑 قفل لمنع التداخل داخل نفس السيرفر
 let isProcessing = false;
 
 /**
@@ -11,7 +11,8 @@ let isProcessing = false;
  */
 const createInstanceFromTemplate = async (template) => {
   try {
-    const newTaskId = Math.floor(Date.now() / 1000);
+    // استخدام timestamp فريد جداً للمهمة الجديدة
+    const newTaskId = Math.floor(Date.now() / 1000) + Math.floor(Math.random() * 1000);
     
     const newTaskData = {
       id: newTaskId,
@@ -35,20 +36,21 @@ const createInstanceFromTemplate = async (template) => {
     };
 
     const newTask = await Task.create(newTaskData);
-    console.log(`✅ [Scheduler] New instance created: ${template.title}`);
     return newTask;
   } catch (error) {
     console.error("❌ [Scheduler] Error creating instance:", error);
+    return null;
   }
 };
 
 /**
- * وظيفة لحساب تاريخ التنفيذ القادم
+ * وظيفة لحساب تاريخ التنفيذ القادم (تضمن القفز للمستقبل)
  */
 const calculateNextRun = (frequency, lastNextRun) => {
   const now = new Date();
   let nextDate = lastNextRun ? new Date(lastNextRun) : new Date();
 
+  // القفز بالوقت حتى نصل لموعد مستقبلي تماماً
   while (nextDate <= now) {
     if (frequency === "daily") {
       nextDate.setDate(nextDate.getDate() + 1);
@@ -67,28 +69,20 @@ const calculateNextRun = (frequency, lastNextRun) => {
  * المحرك الرئيسي
  */
 const checkScheduledTasks = async () => {
-  // 🛑 منع التشغيل إذا كان هناك فحص جارٍ بالفعل
-  if (isProcessing) {
-    console.log("⏳ [Scheduler] Check already in progress, skipping...");
-    return;
-  }
-
+  if (isProcessing) return;
   isProcessing = true;
-  console.log(`🔍 [Scheduler] Checking tasks at: ${new Date().toLocaleString()}`);
 
   try {
     const now = new Date();
     
+    // 1. جلب المهام المستحقة فقط
     const scheduledTemplates = await Task.find({
       isScheduled: true,
       nextRun: { $lte: now },
       nextRun: { $ne: null }
     });
 
-    if (scheduledTemplates.length === 0) {
-      isProcessing = false;
-      return;
-    }
+    if (scheduledTemplates.length === 0) return;
 
     for (const template of scheduledTemplates) {
       try {
@@ -101,11 +95,14 @@ const checkScheduledTasks = async () => {
           nextRunDate = calculateNextRun(template.frequency, template.nextRun);
         }
 
-        // 🛑 التحديث في قاعدة البيانات أولاً وقبل أي شيء لكسر حلقة التكرار بين النسخ
+        // 2. 🛡️ القفل الذري (Atomic Lock):
+        // نحاول تحديث المهمة بشرط أن التاريخ لم يتغير منذ أن قرأناه
+        // إذا نجحت نسخة واحدة من السيرفر في التحديث، ستفشل النسخة الأخرى
         const updatedTemplate = await Task.findOneAndUpdate(
           { 
             _id: template._id, 
-            nextRun: template.nextRun // شرط لضمان عدم معالجتها من نسخة سيرفر أخرى
+            nextRun: template.nextRun, // أهم شرط لمنع التكرار
+            isScheduled: true 
           },
           { 
             $set: { 
@@ -116,28 +113,32 @@ const checkScheduledTasks = async () => {
           { new: true }
         );
 
+        // إذا كان updatedTemplate فارغاً، فهذا يعني أن نسخة سيرفر أخرى سبقتنا
         if (!updatedTemplate) {
-          console.log(`⚠️ [Scheduler] Task ${template.title} already picked up by another instance.`);
+          console.log(`⚠️ [Scheduler] Skipping ${template.title} - processed by another instance.`);
           continue; 
         }
 
+        // 3. إنشاء النسخة التنفيذية (تتم مرة واحدة فقط الآن)
         const newInstance = await createInstanceFromTemplate(template);
 
         if (newInstance) {
-          // إشعار الجرس
-          await Notification.create({
-            recipientId: newInstance.workerId,
-            title: "⏰ موعد مهمة مجدولة",
-            body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
-            url: `/tasks/view/${newInstance.id}`
-          }).catch(err => {});
+          console.log(`✅ [Scheduler] Created: ${template.title}`);
 
-          // إشعار الـ Push
-          sendNotification(newInstance.workerId, {
-            title: "⏰ مهمة مجدولة جديدة",
-            body: `المهمة: ${newInstance.title}`,
-            url: `/tasks/view/${newInstance.id}`
-          }).catch(err => {});
+          // إشعار الجرس والـ Push
+          await Promise.allSettled([
+            Notification.create({
+              recipientId: newInstance.workerId,
+              title: "⏰ موعد مهمة مجدولة",
+              body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
+              url: `/tasks/view/${newInstance.id}`
+            }),
+            sendNotification(newInstance.workerId, {
+              title: "⏰ مهمة مجدولة جديدة",
+              body: `المهمة: ${newInstance.title}`,
+              url: `/tasks/view/${newInstance.id}`
+            })
+          ]);
         }
       } catch (loopError) {
         console.error("❌ Loop Error:", loopError);
@@ -146,12 +147,12 @@ const checkScheduledTasks = async () => {
   } catch (error) {
     console.error("❌ Engine error:", error);
   } finally {
-    isProcessing = false; // 🛑 فتح القفل دائماً عند الانتهاء
+    isProcessing = false;
   }
 };
 
-// --- إعدادات التشغيل ---
-setInterval(checkScheduledTasks, 60000);
-setTimeout(checkScheduledTasks, 5000);
+// إعدادات التشغيل
+setInterval(checkScheduledTasks, 60000); 
+setTimeout(checkScheduledTasks, 10000); // زيادة المهلة لـ 10 ثوانٍ لضمان استقرار السيرفر
 
 module.exports = { checkScheduledTasks };
