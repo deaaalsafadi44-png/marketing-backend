@@ -177,6 +177,8 @@ const resetTaskTimer = async (taskId) => {
 const lockTask = async (taskId) => {
   const task = await Task.findOne({ id: taskId });
   if (!task) return null;
+
+  // 1. حساب الوقت المتبقي إذا كان العداد يعمل
   if (task.timer.isRunning && task.timer.startedAt) {
     const now = new Date();
     const startTime = new Date(task.timer.startedAt);
@@ -185,6 +187,18 @@ const lockTask = async (taskId) => {
     task.timer.isRunning = false;
     task.timer.startedAt = null;
   }
+
+  // 2. ✨ الخطوة الأهم: مزامنة الوقت مع حقل التقارير
+  // نقوم بتحويل الثواني الكلية إلى دقائق لأن حقل timeSpent غالباً ما يعتمد الدقائق في نظامك
+  task.timeSpent = task.timer.totalSeconds / 60; 
+
+  // 3. قفل المهمة وتغيير حالتها
+  task.isLocked = true;
+  task.status = "Completed";
+
+  await task.save();
+  return task.toObject();
+};
   task.isLocked = true;
   task.status = "Completed"; 
   await task.save();
