@@ -1,27 +1,26 @@
-const Task = require("../models/Task"); // تأكد من حرف T كبير
-const User = require("../models/User"); // تأكد من حرف U كبير
+const Task = require("../models/Task"); 
+const User = require("../models/User"); 
+
 /**
  * وظيفة لاستنساخ مهمة من القالب المجدول
- * تأخذ القالب (Template) وتنشئ منه مهمة جديدة للموظف
  */
 const createInstanceFromTemplate = async (template) => {
   try {
     const newTaskId = Math.floor(Date.now() / 1000);
     
-    // إنشاء كائن المهمة الجديدة بناءً على بيانات القالب
     const newTaskData = {
       id: newTaskId,
       title: template.title,
       description: template.description,
       type: template.type,
       priority: template.priority,
-      status: "Pending", // دائماً تبدأ بـ Pending
+      status: "Pending",
       company: template.company,
       workerId: template.workerId,
       workerName: template.workerName,
       workerJobTitle: template.workerJobTitle,
       createdAt: new Date().toISOString(),
-      isScheduled: false, // المهمة الجديدة ليست قالباً بل مهمة حقيقية
+      isScheduled: false, // مهمة تنفيذية وليست قالباً
       isLocked: false,
       timer: {
         totalSeconds: 0,
@@ -31,26 +30,27 @@ const createInstanceFromTemplate = async (template) => {
     };
 
     const newTask = await Task.create(newTaskData);
-    console.log(`✅ [Scheduler] New task created for ${template.workerName}: ${template.title}`);
+    console.log(`✅ [Scheduler] New instance created: ${template.title} for ${template.workerName}`);
     return newTask;
   } catch (error) {
-    console.error("❌ [Scheduler] Error creating task instance:", error);
+    console.error("❌ [Scheduler] Error creating instance:", error);
   }
 };
 
 /**
- * وظيفة لحساب تاريخ التنفيذ القادم بناءً على الوتيرة (Frequency)
+ * وظيفة لحساب تاريخ التنفيذ القادم
  */
-const calculateNextRun = (frequency) => {
-  const now = new Date();
-  let nextDate = new Date(now);
+const calculateNextRun = (frequency, lastNextRun) => {
+  // نستخدم تاريخ آخر تنفيذ كقاعدة للحساب لضمان عدم زحف المواعيد
+  const baseDate = lastNextRun ? new Date(lastNextRun) : new Date();
+  let nextDate = new Date(baseDate);
 
   if (frequency === "daily") {
-    nextDate.setDate(now.getDate() + 1);
+    nextDate.setDate(baseDate.getDate() + 1);
   } else if (frequency === "weekly") {
-    nextDate.setDate(now.getDate() + 7);
+    nextDate.setDate(baseDate.getDate() + 7);
   } else if (frequency === "monthly") {
-    nextDate.setMonth(now.getMonth() + 1);
+    nextDate.setMonth(baseDate.getMonth() + 1);
   } else {
     return null;
   }
@@ -58,38 +58,45 @@ const calculateNextRun = (frequency) => {
 };
 
 /**
- * المحرك الرئيسي (The Engine)
- * يبحث عن المهام التي حان موعد تنفيذها
+ * المحرك الرئيسي
  */
 const checkScheduledTasks = async () => {
-  console.log("🔍 [Scheduler] Checking for scheduled tasks...");
+  console.log(`🔍 [Scheduler] Checking tasks at: ${new Date().toLocaleString()}`);
   try {
     const now = new Date();
     
-    // البحث عن القوالب المجدولة التي حان موعدها أو فات موعدها
+    // جلب القوالب التي حان موعدها
     const scheduledTemplates = await Task.find({
       isScheduled: true,
       nextRun: { $lte: now },
       frequency: { $ne: "none" }
     });
 
+    if (scheduledTemplates.length === 0) {
+      console.log("ℹ️ [Scheduler] No tasks due for execution.");
+      return;
+    }
+
     for (const template of scheduledTemplates) {
-      // 1. إنشاء المهمة الفعلية للموظف
+      // 1. إنشاء النسخة التنفيذية
       await createInstanceFromTemplate(template);
 
-      // 2. تحديث موعد التنفيذ القادم للقالب
-      const nextRunDate = calculateNextRun(template.frequency);
+      // 2. تحديث موعد التنفيذ القادم
+      const nextRunDate = calculateNextRun(template.frequency, template.nextRun);
       template.nextRun = nextRunDate;
       await template.save();
       
-      console.log(`📅 [Scheduler] Next run for "${template.title}" set to: ${nextRunDate}`);
+      console.log(`📅 [Scheduler] Next run for "${template.title}" updated to: ${nextRunDate}`);
     }
   } catch (error) {
-    console.error("❌ [Scheduler] Error in checkScheduledTasks:", error);
+    console.error("❌ [Scheduler] Critical engine error:", error);
   }
 };
 
-// تشغيل المحرك كل ساعة
+// تشغيل الفحص فوراً عند بدء تشغيل السيرفر
+checkScheduledTasks();
+
+// ثم ضبط التكرار كل ساعة
 setInterval(checkScheduledTasks, 3600000);
 
 module.exports = { checkScheduledTasks };
