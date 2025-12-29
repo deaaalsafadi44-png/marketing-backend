@@ -1,5 +1,5 @@
-const Task = require("./models/Task"); // تأكد من المسار الصحيح للموديل
-const User = require("./models/User");
+const Task = require("../models/Task"); // T كبيرة لتطابق اسم الملف Task.js
+const User = require("../models/User"); // U كبيرة لتطابق اسم الملف User.js
 
 /**
  * وظيفة لاستنساخ مهمة من القالب المجدول
@@ -38,6 +38,7 @@ const createInstanceFromTemplate = async (template) => {
     console.error("❌ [Scheduler] Error creating task instance:", error);
   }
 };
+
 /**
  * وظيفة لحساب تاريخ التنفيذ القادم بناءً على الوتيرة (Frequency)
  */
@@ -89,8 +90,7 @@ const checkScheduledTasks = async () => {
   }
 };
 
-// تشغيل المحرك كل ساعة (3600000 مللي ثانية)
-// يمكنك تغييرها لـ 60000 للفحص كل دقيقة أثناء التجربة
+// تشغيل المحرك كل ساعة
 setInterval(checkScheduledTasks, 3600000);
 
 module.exports = { checkScheduledTasks };
