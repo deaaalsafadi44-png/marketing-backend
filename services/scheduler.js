@@ -3,6 +3,9 @@ const User = require("../models/User");
 const { sendNotification } = require("./notifications.service"); // خدمة الـ Push
 const Notification = require("../models/Notification"); // موديل إشعارات الجرس
 
+// 🛑 متغير لمنع التداخل داخل نفس نسخة السيرفر
+let isProcessing = false;
+
 /**
  * وظيفة لاستنساخ مهمة من القالب المجدول
  */
@@ -22,7 +25,7 @@ const createInstanceFromTemplate = async (template) => {
       workerName: template.workerName,
       workerJobTitle: template.workerJobTitle,
       createdAt: new Date().toISOString(),
-      isScheduled: false, // مهمة تنفيذية وليست قالباً
+      isScheduled: false, 
       isLocked: false,
       timer: {
         totalSeconds: 0,
@@ -32,7 +35,7 @@ const createInstanceFromTemplate = async (template) => {
     };
 
     const newTask = await Task.create(newTaskData);
-    console.log(`✅ [Scheduler] New instance created: ${template.title} for ${template.workerName}`);
+    console.log(`✅ [Scheduler] New instance created: ${template.title}`);
     return newTask;
   } catch (error) {
     console.error("❌ [Scheduler] Error creating instance:", error);
@@ -40,13 +43,12 @@ const createInstanceFromTemplate = async (template) => {
 };
 
 /**
- * وظيفة لحساب تاريخ التنفيذ القادم (تضمن القفز للمستقبل)
+ * وظيفة لحساب تاريخ التنفيذ القادم
  */
 const calculateNextRun = (frequency, lastNextRun) => {
   const now = new Date();
   let nextDate = lastNextRun ? new Date(lastNextRun) : new Date();
 
-  // طالما أن التاريخ المحسوب في الماضي، أضف الوقت حسب التكرار
   while (nextDate <= now) {
     if (frequency === "daily") {
       nextDate.setDate(nextDate.getDate() + 1);
@@ -62,14 +64,21 @@ const calculateNextRun = (frequency, lastNextRun) => {
 };
 
 /**
- * المحرك الرئيسي لفحص المهام المجدولة
+ * المحرك الرئيسي
  */
 const checkScheduledTasks = async () => {
+  // 🛑 منع التشغيل إذا كان هناك فحص جارٍ بالفعل
+  if (isProcessing) {
+    console.log("⏳ [Scheduler] Check already in progress, skipping...");
+    return;
+  }
+
+  isProcessing = true;
   console.log(`🔍 [Scheduler] Checking tasks at: ${new Date().toLocaleString()}`);
+
   try {
     const now = new Date();
     
-    // 1. جلب القوالب التي حان موعدها
     const scheduledTemplates = await Task.find({
       isScheduled: true,
       nextRun: { $lte: now },
@@ -77,30 +86,26 @@ const checkScheduledTasks = async () => {
     });
 
     if (scheduledTemplates.length === 0) {
-      console.log("ℹ️ [Scheduler] No tasks due for execution.");
+      isProcessing = false;
       return;
     }
 
     for (const template of scheduledTemplates) {
       try {
-        // 🛑 التعديل الأهم: حساب الموعد القادم أولاً
         let nextRunDate = null;
         let shouldStillBeScheduled = true;
 
-        if (template.frequency === "none" || !template.frequency) {
+        if (!template.frequency || template.frequency === "none") {
           shouldStillBeScheduled = false;
-          nextRunDate = null;
         } else {
-          // تأكد أن calculateNextRun تستخدم منطق الـ while للقفز للمستقبل
           nextRunDate = calculateNextRun(template.frequency, template.nextRun);
         }
 
-        // 2. تحديث القالب في قاعدة البيانات "بشرط" أن لا يكون قد تم تحديثه من قبل
-        // نستخدم findOneAndUpdate لضمان أننا نحدث المهمة ونحجزها في نفس اللحظة
+        // 🛑 التحديث في قاعدة البيانات أولاً وقبل أي شيء لكسر حلقة التكرار بين النسخ
         const updatedTemplate = await Task.findOneAndUpdate(
           { 
             _id: template._id, 
-            nextRun: template.nextRun // شرط إضافي لضمان عدم التكرار
+            nextRun: template.nextRun // شرط لضمان عدم معالجتها من نسخة سيرفر أخرى
           },
           { 
             $set: { 
@@ -108,19 +113,16 @@ const checkScheduledTasks = async () => {
               isScheduled: shouldStillBeScheduled 
             } 
           },
-          { new: true } // ليعيد لنا الوثيقة بعد التحديث
+          { new: true }
         );
 
-        // إذا لم يجد الوثيقة بهذا التاريخ (معناه تم تحديثها من دورة سابقة)، تخطاها فوراً
         if (!updatedTemplate) {
-          console.log(`⚠️ [Scheduler] Skipping already processed task: ${template.title}`);
+          console.log(`⚠️ [Scheduler] Task ${template.title} already picked up by another instance.`);
           continue; 
         }
 
-        // 3. الآن وبعد أن "حجزنا" التحديث بنجاح، ننشئ النسخة لمرة واحدة فقط
         const newInstance = await createInstanceFromTemplate(template);
 
-        // 4. إرسال الإشعارات
         if (newInstance) {
           // إشعار الجرس
           await Notification.create({
@@ -128,32 +130,28 @@ const checkScheduledTasks = async () => {
             title: "⏰ موعد مهمة مجدولة",
             body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
             url: `/tasks/view/${newInstance.id}`
-          }).catch(err => console.error("❌ Notification Error:", err));
+          }).catch(err => {});
 
           // إشعار الـ Push
           sendNotification(newInstance.workerId, {
             title: "⏰ مهمة مجدولة جديدة",
-            body: `المهمة: ${newInstance.title}\nالشركة: ${newInstance.company}`,
+            body: `المهمة: ${newInstance.title}`,
             url: `/tasks/view/${newInstance.id}`
-          }).catch(err => console.error("❌ Push Error:", err));
+          }).catch(err => {});
         }
-
-        console.log(`✅ [Scheduler] Processed and rescheduled: ${template.title}`);
       } catch (loopError) {
-        console.error(`❌ [Scheduler] Error in task ${template.title}:`, loopError);
+        console.error("❌ Loop Error:", loopError);
       }
     }
   } catch (error) {
-    console.error("❌ [Scheduler] Engine error:", error);
+    console.error("❌ Engine error:", error);
+  } finally {
+    isProcessing = false; // 🛑 فتح القفل دائماً عند الانتهاء
   }
 };
 
 // --- إعدادات التشغيل ---
-
-// تشغيل الفحص الدوري كل دقيقة واحدة
 setInterval(checkScheduledTasks, 60000);
-
-// تشغيل أولي بعد 5 ثوانٍ من تشغيل السيرفر للتأكد من استقرار الاتصال
 setTimeout(checkScheduledTasks, 5000);
 
 module.exports = { checkScheduledTasks };
