@@ -1,6 +1,7 @@
 const Task = require("../models/Task"); 
 const User = require("../models/User"); 
-
+const { sendNotification } = require("./notifications.service"); // خدمة الـ Push
+const Notification = require("../models/Notification"); // موديل إشعارات الجرس
 /**
  * وظيفة لاستنساخ مهمة من القالب المجدول
  */
@@ -84,22 +85,37 @@ const checkScheduledTasks = async () => {
 
     for (const template of scheduledTemplates) {
       // 2. إنشاء النسخة التنفيذية المسندة للموظف
-      await createInstanceFromTemplate(template);
+      const newInstance = await createInstanceFromTemplate(template);
+
+      // ✨ [إضافة جديدة] إرسال الإشعارات الآن لأن المهمة ظهرت للموظف فعلياً
+      if (newInstance) {
+        // أ- إشعار الجرس (Database Notification)
+        await Notification.create({
+          recipientId: newInstance.workerId,
+          title: "⏰ موعد مهمة مجدولة",
+          body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
+          url: `/tasks/view/${newInstance.id}`
+        }).catch(err => console.error("❌ Database Notification Error:", err));
+
+        // ب- إشعار الـ Push للمتصفح
+        sendNotification(newInstance.workerId, {
+          title: "⏰ مهمة مجدولة جديدة",
+          body: `المهمة: ${newInstance.title}\nالشركة: ${newInstance.company}`,
+          url: `/tasks/view/${newInstance.id}`
+        }).catch(err => console.error("❌ Push Notification Error:", err));
+      }
 
       // 3. إدارة منطق ما بعد التنفيذ (تكرار أم إيقاف)
       if (template.frequency === "none" || !template.frequency) {
-        // إذا كانت المهمة لمرة واحدة فقط، نغلق القالب المجدول
         template.isScheduled = false;
         template.nextRun = null;
         console.log(`✅ [Scheduler] Task "${template.title}" executed once and schedule finished.`);
       } else {
-        // إذا كانت مكررة (يومي/أسبوعي/شهري)، نحسب التاريخ القادم
         const nextRunDate = calculateNextRun(template.frequency, template.nextRun);
         template.nextRun = nextRunDate;
         console.log(`📅 [Scheduler] Task "${template.title}" updated for next recurrence: ${nextRunDate}`);
       }
 
-      // حفظ حالة القالب الجديدة في قاعدة البيانات
       await template.save();
     }
   } catch (error) {

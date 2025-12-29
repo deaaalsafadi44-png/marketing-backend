@@ -3,15 +3,17 @@ const tasksService = require("../services/tasks.service");
 const Notification = require("../models/Notification"); // ✅ التأكد من وجود الاستدعاء في الأعلى
 
 /* =========================
-   CREATE TASK (UPDATED)
+   CREATE TASK (تعديل لمنع الإشعارات المبكرة)
 ========================= */
 const createTask = async (req, res) => {
   try {
     const task = await tasksService.createTask(req.body);
     
-    if (task && task.workerId) {
-      // ✅ 1. حفظ الإشعار في قاعدة البيانات ليظهر في العداد (الميزة الجديدة)
-      // هذا السجل هو ما سيجعلك ترى رقم 1 أو 2 فوق أيقونة الجرس لاحقاً
+    // 🛑 التعديل هنا: نرسل الإشعار فقط إذا لم تكن المهمة مجدولة
+    // إذا كانت (isScheduled) تساوي true، لن يدخل النظام لهذا الجزء
+    if (task && task.workerId && !task.isScheduled) {
+      
+      // 1. حفظ الإشعار في العداد (Database Notification)
       await Notification.create({
         recipientId: task.workerId,
         title: "مهمة جديدة! 📋",
@@ -19,7 +21,7 @@ const createTask = async (req, res) => {
         url: `/tasks/view/${task.id}`
       });
 
-      // 2. إرسال إشعار الـ Push للمتصفح (ليظهر التنبيه في ويندوز حتى والمتصفح مغلق)
+      // 2. إرسال إشعار الـ Push للمتصفح
       sendNotification(task.workerId, {
         title: "مهمة جديدة! 📋",
         body: `📌 المهمة: ${task.title}\n🏢 الشركة: ${task.company || 'غير محدد'}\n⏳ الأولوية: ${task.priority || 'عادية'}`,
