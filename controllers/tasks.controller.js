@@ -300,8 +300,8 @@ const unlockTask = async (req, res) => {
   if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
 
   // حماية إضافية: التأكد أن القادم هو أدمن
-  if (req.user.role !== "Admin") {
-    return res.status(403).json({ message: "Only Admin can unlock tasks" });
+if (req.user.role.toLowerCase() !== "admin") { // ✅ سيقبل Admin أو admin
+//     return res.status(403).json({ message: "Only Admin can unlock tasks" });
   }
 
   try {
