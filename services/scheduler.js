@@ -65,69 +65,25 @@ const calculateNextRun = (frequency, lastNextRun) => {
  * المحرك الرئيسي المطور
  * يدعم التنفيذ لمرة واحدة أو التكرار بناءً على تاريخ محدد
  */
-const checkScheduledTasks = async () => {
-  console.log(`🔍 [Scheduler] Checking tasks at: ${new Date().toLocaleString()}`);
-  try {
-    const now = new Date();
-    
-    // 1. جلب القوالب التي حان موعدها
-    const scheduledTemplates = await Task.find({
-      isScheduled: true,
-      nextRun: { $lte: now },
-      nextRun: { $ne: null }
-    });
+const calculateNextRun = (frequency, lastNextRun) => {
+  const now = new Date();
+  // إذا لم يكن هناك تاريخ سابق، نبدأ من الآن
+  let nextDate = lastNextRun ? new Date(lastNextRun) : new Date();
 
-    if (scheduledTemplates.length === 0) return;
-
-    for (const template of scheduledTemplates) {
-      // 🛑 الخطوة الأهم: تحديث الموعد القادم "أولاً" في الذاكرة لضمان عدم التكرار
-      let nextRunDate = null;
-      let shouldStillBeScheduled = true;
-
-      if (template.frequency === "none" || !template.frequency) {
-        shouldStillBeScheduled = false;
-        nextRunDate = null;
-      } else {
-        nextRunDate = calculateNextRun(template.frequency, template.nextRun);
-      }
-
-      // تحديث القالب في قاعدة البيانات فوراً قبل أي عملية أخرى
-      await Task.updateOne(
-        { _id: template._id },
-        { 
-          $set: { 
-            nextRun: nextRunDate, 
-            isScheduled: shouldStillBeScheduled 
-          } 
-        }
-      );
-
-      // 2. الآن ننشئ النسخة لمرة واحدة فقط
-      const newInstance = await createInstanceFromTemplate(template);
-
-      // 3. إرسال الإشعارات للنسخة الجديدة فقط
-      if (newInstance) {
-        // إشعار الجرس
-        await Notification.create({
-          recipientId: newInstance.workerId,
-          title: "⏰ موعد مهمة مجدولة",
-          body: `تذكير: حان موعد تنفيذ "${newInstance.title}"`,
-          url: `/tasks/view/${newInstance.id}`
-        }).catch(err => console.error("❌ Database Notification Error:", err));
-
-        // إشعار الـ Push
-        sendNotification(newInstance.workerId, {
-          title: "⏰ مهمة مجدولة جديدة",
-          body: `المهمة: ${newInstance.title}\nالشركة: ${newInstance.company}`,
-          url: `/tasks/view/${newInstance.id}`
-        }).catch(err => console.error("❌ Push Notification Error:", err));
-      }
-
-      console.log(`✅ [Scheduler] Successfully processed and notified for: ${template.title}`);
+  // 🛑 أهم تعديل: طالما أن التاريخ المحسوب أصغر من أو يساوي "الآن"
+  // استمر في إضافة الوقت حسب التكرار حتى نصل لموعد مستقبلي
+  while (nextDate <= now) {
+    if (frequency === "daily") {
+      nextDate.setDate(nextDate.getDate() + 1);
+    } else if (frequency === "weekly") {
+      nextDate.setDate(nextDate.getDate() + 7);
+    } else if (frequency === "monthly") {
+      nextDate.setMonth(nextDate.getMonth() + 1);
+    } else {
+      return null; // في حال كانت frequency غير معروفة
     }
-  } catch (error) {
-    console.error("❌ [Scheduler] Critical engine error:", error);
   }
+  return nextDate;
 };
 
 // تشغيل الفحص فوراً عند بدء تشغيل السيرفر
