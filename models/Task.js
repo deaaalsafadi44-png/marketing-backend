@@ -50,8 +50,14 @@ const TaskSchema = new mongoose.Schema(
       enum: ["none", "daily", "weekly", "monthly"], 
       default: "none" 
     }, 
+    frequencyDetails: {
+  label: { type: String },
+  value: { type: Number },
+  unit: { type: String }
+},
     nextRun: { type: Date, default: null }, 
     scheduledDay: { type: Number, default: null },
+    startDate: { type: Date, default: null }, // أضفه أيضاً لتتبع تاريخ البداية
   },
   { versionKey: false }
 );
