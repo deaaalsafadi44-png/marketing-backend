@@ -43,7 +43,7 @@ const createTask = async (data) => {
   };
 
   return await Task.create(task);
-};
+};  
 /* =========================
    GET ALL TASKS (المعدلة لإخفاء القوالب)
 ========================= */
@@ -240,6 +240,32 @@ const getScheduledTemplates = async () => {
   // نجلب فقط المهام التي تعمل كـ "قوالب مجدولة"
   return await Task.find({ isScheduled: true }, { _id: 0 });
 };
+/* =====================================================
+    📅 UPDATE SCHEDULED TEMPLATE (NEW)
+    تحديث القالب المجدول مباشرة في قاعدة البيانات
+===================================================== */
+const updateScheduledTask = async (taskId, data) => {
+  // إذا كان هناك موظف جديد، نحدث بياناته
+  if (data.assignedTo) {
+    const worker = await User.findOne({ id: Number(data.assignedTo) });
+    if (worker) {
+      data.workerId = worker.id;
+      data.workerName = worker.name;
+      data.workerJobTitle = worker.dept;
+    }
+  }
+
+  // إذا تم تغيير التاريخ، نحدث nextRun
+  if (data.startDate) {
+    data.nextRun = new Date(data.startDate);
+  }
+
+  return await Task.findOneAndUpdate(
+    { id: taskId, isScheduled: true },
+    { $set: data },
+    { new: true }
+  );
+};
 module.exports = {
   createTask,
   getAllTasks,
@@ -256,4 +282,5 @@ module.exports = {
   lockTask,
   unlockTask,
   getScheduledTemplates,
+  updateScheduledTask,
 };
