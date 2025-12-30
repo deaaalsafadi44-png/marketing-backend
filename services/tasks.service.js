@@ -20,9 +20,37 @@ const calculateLiveTime = (task) => {
    CREATE TASK (Modified for Precise Scheduling)
 ========================= */
 const createTask = async (data) => {
-  // نجلب الموظف من قاعدة البيانات باستخدام المعرف المرسل
+  // 1. جلب بيانات الموظف
   const worker = await User.findOne({ id: Number(data.workerId) });
 
+  // 2. حساب موعد التنفيذ الأول (nextRun) بناءً على النظام الديناميكي الجديد
+  let calculatedNextRun = null;
+
+  if (data.isScheduled && data.frequencyDetails) {
+    const { value, unit } = data.frequencyDetails;
+    const amount = Number(value);
+    
+    // نقطة البداية هي التاريخ الذي اخترته في الواجهة
+    const startDate = new Date(data.startDate || Date.now());
+    calculatedNextRun = new Date(startDate);
+
+    // تطبيق المعادلة: (الكمية × النوع)
+    // ملاحظة: نزيد الكمية على تاريخ البداية المختار
+    if (unit === "hours") {
+      calculatedNextRun.setHours(calculatedNextRun.getHours() + amount);
+    } else if (unit === "days") {
+      calculatedNextRun.setDate(calculatedNextRun.getDate() + amount);
+    } else if (unit === "weeks") {
+      calculatedNextRun.setDate(calculatedNextRun.getDate() + (amount * 7));
+    } else if (unit === "months") {
+      calculatedNextRun.setMonth(calculatedNextRun.getMonth() + amount);
+    }
+  } else if (data.isScheduled && data.startDate) {
+    // حالة احتياطية إذا لم تتوفر details نأخذ تاريخ البداية مباشرة
+    calculatedNextRun = new Date(data.startDate);
+  }
+
+  // 3. تجهيز كائن المهمة للحفظ
   const task = {
     id: Math.floor(Date.now() / 1000),
     ...data,
@@ -30,20 +58,22 @@ const createTask = async (data) => {
     workerJobTitle: worker?.dept || "No Job Title",
     createdAt: new Date().toISOString(),
     
-    // ✨ إدارة حقول الجدولة الجديدة بدقة
+    // إدارة حقول الجدولة الجديدة
     isScheduled: data.isScheduled || false,
-    frequency: data.frequency || "none",
+    frequency: data.frequency || "none", // سيخزن النص مثل "كل 7 ساعة"
     
-    // المنطق الجديد: تاريخ التنفيذ القادم هو تاريخ البداية الذي حددته أنت
-    // وإذا لم يكن مجدولاً يظل فارغاً (null)
-    nextRun: data.isScheduled ? new Date(data.startDate || data.nextRun) : null,
+    // تخزين البيانات التفصيلية لسهولة الحساب لاحقاً في سكريبت الأتمتة
+    frequencyDetails: data.frequencyDetails || null,
+    
+    // الموعد القادم المحسوب بدقة
+    nextRun: calculatedNextRun,
     
     // الاحتفاظ بتاريخ البداية الأصلي للتوثيق
     scheduledStartDate: data.startDate || null
   };
 
   return await Task.create(task);
-};  
+};
 /* =========================
    GET ALL TASKS (المعدلة لإخفاء القوالب)
 ========================= */
