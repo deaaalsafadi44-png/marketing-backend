@@ -330,6 +330,39 @@ const getScheduledTasks = async (req, res) => {
     res.status(500).json({ message: "Failed to load scheduled templates" });
   }
 };
+/* =====================================================
+    📅 UPDATE SCHEDULED TEMPLATE
+    تحديث بيانات القالب المجدول دون المساس بالمهام المنفذة
+===================================================== */
+const updateScheduledTask = async (req, res) => {
+  const taskId = Number(req.params.id);
+  if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
+
+  try {
+    const data = req.body;
+
+    // إذا قام المدير بتغيير وقت البداية، نقوم بتحديث موعد التنفيذ القادم
+    if (data.startDate) {
+      data.nextRun = new Date(data.startDate).toISOString();
+    }
+
+    // التحديث يتم فقط إذا كانت المهمة هي "قالب مجدول" لضمان الأمان
+    const updated = await Task.findOneAndUpdate(
+      { id: taskId, isScheduled: true },
+      { $set: data },
+      { new: true }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Scheduled template not found" });
+    }
+
+    res.json(updated);
+  } catch (err) {
+    console.error("Error updating scheduled task:", err);
+    res.status(500).json({ message: "Failed to update scheduled template" });
+  }
+};
 // لا تنسى إضافة deleteTaskComment إلى module.exports في نهاية الملف
 module.exports = {
   createTask,
@@ -349,4 +382,5 @@ module.exports = {
   deleteTaskComment,
   lockTask,   // ✅ إضافة هذه
   unlockTask, // ✅ إضافة هذه
+  updateScheduledTask,
 };
