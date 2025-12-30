@@ -19,60 +19,49 @@ const calculateLiveTime = (task) => {
 /* =========================
    CREATE TASK (Modified for Precise Scheduling)
 ========================= */
+/* =========================
+   CREATE TASK (Modified for Precise Scheduling)
+========================= */
 const createTask = async (data) => {
-  // 1. جلب بيانات الموظف
   const worker = await User.findOne({ id: Number(data.workerId) });
 
-  // 2. حساب موعد التنفيذ الأول (nextRun) بناءً على النظام الديناميكي الجديد
   let calculatedNextRun = null;
 
   if (data.isScheduled && data.frequencyDetails) {
     const { value, unit } = data.frequencyDetails;
     const amount = Number(value);
     
-    // نقطة البداية هي التاريخ الذي اخترته في الواجهة
-    const startDate = new Date(data.startDate || Date.now());
-    calculatedNextRun = new Date(startDate);
+    // استخدام توقيت عالمي ISO لضمان عدم انهيار السيرفر
+    let nextRunDate = new Date(data.startDate || Date.now());
 
-    // تطبيق المعادلة: (الكمية × النوع)
-    // ملاحظة: نزيد الكمية على تاريخ البداية المختار
     if (unit === "hours") {
-      calculatedNextRun.setHours(calculatedNextRun.getHours() + amount);
+      nextRunDate.setHours(nextRunDate.getHours() + amount);
     } else if (unit === "days") {
-      calculatedNextRun.setDate(calculatedNextRun.getDate() + amount);
+      nextRunDate.setDate(nextRunDate.getDate() + amount);
     } else if (unit === "weeks") {
-      calculatedNextRun.setDate(calculatedNextRun.getDate() + (amount * 7));
+      nextRunDate.setDate(nextRunDate.getDate() + (amount * 7));
     } else if (unit === "months") {
-      calculatedNextRun.setMonth(calculatedNextRun.getMonth() + amount);
+      nextRunDate.setMonth(nextRunDate.getMonth() + amount);
     }
-  } else if (data.isScheduled && data.startDate) {
-    // حالة احتياطية إذا لم تتوفر details نأخذ تاريخ البداية مباشرة
-    calculatedNextRun = new Date(data.startDate);
+
+    // ✅ تحويل التاريخ لنص ISO لضمان قبوله في قاعدة البيانات
+    calculatedNextRun = nextRunDate.toISOString();
   }
 
-  // 3. تجهيز كائن المهمة للحفظ
-  const task = {
+  const taskData = {
     id: Math.floor(Date.now() / 1000),
     ...data,
     workerName: worker?.name || "Unknown",
     workerJobTitle: worker?.dept || "No Job Title",
     createdAt: new Date().toISOString(),
-    
-    // إدارة حقول الجدولة الجديدة
-    isScheduled: data.isScheduled || false,
-    frequency: data.frequency || "none", // سيخزن النص مثل "كل 7 ساعة"
-    
-    // تخزين البيانات التفصيلية لسهولة الحساب لاحقاً في سكريبت الأتمتة
+    isScheduled: !!data.isScheduled,
+    frequency: data.frequency || "none",
     frequencyDetails: data.frequencyDetails || null,
-    
-    // الموعد القادم المحسوب بدقة
-    nextRun: calculatedNextRun,
-    
-    // الاحتفاظ بتاريخ البداية الأصلي للتوثيق
-    scheduledStartDate: data.startDate || null
+    nextRun: calculatedNextRun || null,
+    startDate: data.startDate ? new Date(data.startDate).toISOString() : null
   };
 
-  return await Task.create(task);
+  return await Task.create(taskData);
 };
 /* =========================
    GET ALL TASKS (المعدلة لإخفاء القوالب)
