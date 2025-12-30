@@ -334,22 +334,34 @@ const getScheduledTasks = async (req, res) => {
     📅 UPDATE SCHEDULED TEMPLATE
     تحديث بيانات القالب المجدول دون المساس بالمهام المنفذة
 ===================================================== */
+/* =====================================================
+    📅 UPDATE SCHEDULED TEMPLATE
+    تحديث بيانات القالب المجدول ليشمل الموظف والساعة
+===================================================== */
 const updateScheduledTask = async (req, res) => {
   const taskId = Number(req.params.id);
   if (isNaN(taskId)) return res.status(400).json({ message: "Invalid task id" });
 
   try {
-    const data = req.body;
+    const { title, frequency, assignedTo, startDate, executionTime } = req.body;
 
-    // إذا قام المدير بتغيير وقت البداية، نقوم بتحديث موعد التنفيذ القادم
-    if (data.startDate) {
-      data.nextRun = new Date(data.startDate).toISOString();
+    // تجهيز البيانات للتحديث
+    let updateData = {
+      title,
+      frequency,
+      assignedTo, // ✅ حفظ الموظف المسؤول
+      executionTime // ✅ حفظ وقت التنفيذ (الساعة)
+    };
+
+    // إذا قام المدير بتغيير التاريخ، نقوم بتحديث موعد التنفيذ القادم
+    if (startDate) {
+      updateData.nextRun = new Date(startDate).toISOString();
     }
 
-    // التحديث يتم فقط إذا كانت المهمة هي "قالب مجدول" لضمان الأمان
+    // التحديث يتم فقط إذا كانت المهمة هي "قالب مجدول"
     const updated = await Task.findOneAndUpdate(
       { id: taskId, isScheduled: true },
-      { $set: data },
+      { $set: updateData },
       { new: true }
     );
 
