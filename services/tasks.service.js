@@ -23,26 +23,24 @@ const calculateLiveTime = (task) => {
    CREATE TASK (Modified for Precise Scheduling)
 ========================= */
 const createTask = async (data) => {
-  // 1. التحقق من وجود الموظف وتأمين البحث
-  // استخدمنا Number لضمان البحث بالنوع الصحيح إذا كان الآيدي في القاعدة رقمياً
+  // 1. التأكد من وجود الموظف (التحويل الرقمي ضروري هنا)
   const worker = await User.findOne({ id: Number(data.workerId) });
 
-  // 🛑 إضافة شرط حماية: إذا لم يجد الموظف، نوقف العملية ونرسل خطأ واضحاً
   if (!worker) {
-    console.error(`❌ Worker not found with ID: ${data.workerId}`);
     throw new Error("بيانات الموظف غير صحيحة أو غير موجودة في النظام");
   }
 
   let calculatedNextRun = null;
 
+  // 2. معالجة بيانات الجدولة والتكرار
   if (data.isScheduled && data.frequencyDetails) {
     const { value, unit } = data.frequencyDetails;
     const amount = Number(value);
     
-    // استخدام التاريخ المختار أو تاريخ اللحظة الحالية كبداية
+    // استخدام startDate المرسل أو الوقت الحالي كبداية
     let nextRunDate = new Date(data.startDate || Date.now());
 
-    // الحساب الدقيق للموعد القادم بناءً على الوحدة المختارة
+    // الحساب الدقيق للموعد القادم بناءً على الوحدة
     if (unit === "hours") {
       nextRunDate.setHours(nextRunDate.getHours() + amount);
     } else if (unit === "days") {
@@ -56,35 +54,29 @@ const createTask = async (data) => {
     calculatedNextRun = nextRunDate.toISOString();
   }
 
-  // 2. بناء كائن البيانات بشكل صريح لتجنب تداخل الأنواع (Types)
+  // 3. بناء كائن المهمة بشكل صريح (تجنب استخدام ...data مباشرة)
+  // هذا يضمن عدم تخزين workerId كنص وتجنب تعارض الـ Schema
   const taskData = {
-    // توليد آيدي فريد للمهمة
     id: Math.floor(Date.now() / 1000),
-    
-    // البيانات الأساسية مع التأكد من تحويل القيم للأنواع المطلوبة
     title: data.title,
     description: data.description,
     company: data.company,
     type: data.type,
     priority: data.priority,
     status: data.status,
-    
-    // ربط الموظف (تحويل إجباري لرقم لمنع خطأ 500)
-    workerId: Number(data.workerId), 
-    workerName: worker.name, // جلب الاسم مباشرة من قاعدة بيانات المستخدمين
+    workerId: Number(data.workerId), // تحويل إجباري لرقم
+    workerName: worker.name,
     workerJobTitle: worker.dept || "No Job Title",
-    
     createdAt: new Date().toISOString(),
-    
-    // بيانات الجدولة
     isScheduled: Boolean(data.isScheduled),
     frequency: data.frequency || "none",
     frequencyDetails: data.frequencyDetails || null,
     nextRun: calculatedNextRun,
+    // التأكد من أن startDate مخزن بصيغة ISO صالحة
     startDate: data.startDate ? new Date(data.startDate).toISOString() : null
   };
 
-  // 3. التنفيذ الفعلي في قاعدة البيانات
+  // تنفيذ الحفظ في قاعدة البيانات
   return await Task.create(taskData);
 };
 /* =========================
