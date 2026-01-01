@@ -356,21 +356,19 @@ const updateScheduledTask = async (req, res) => {
       executionTime 
     };
 
-    // الإصلاح هنا: دمج التاريخ مع الساعة لضمان عدم حدوث تنفيذ فوري خاطئ
+    // ✅ الإصلاح الجوهري: دمج التاريخ القادم من الفرونت مع الساعة
     if (startDate && executionTime) {
       const [hours, minutes] = executionTime.split(':');
       const nextRunDate = new Date(startDate);
       nextRunDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
       
-      updateData.nextRun = nextRunDate; 
+      updateData.nextRun = nextRunDate; // نرسل كائن تاريخ كامل للسيرفس
       updateData.startDate = nextRunDate; 
+    } else if (startDate) {
+      updateData.nextRun = new Date(startDate);
     }
 
-    const updated = await Task.findOneAndUpdate(
-      { id: taskId, isScheduled: true },
-      { $set: updateData },
-      { new: true }
-    );
+    const updated = await tasksService.updateScheduledTask(taskId, updateData);
 
     if (!updated) return res.status(404).json({ message: "Scheduled template not found" });
 

@@ -16,46 +16,27 @@ const calculateLiveTime = (task) => {
   return task;
 };
 
-/* =========================
-   CREATE TASK (Modified for Precise Scheduling)
-========================= */
-/* =========================
-   CREATE TASK (Modified for Precise Scheduling)
-========================= */
 const createTask = async (data) => {
-  // 1. التأكد من وجود الموظف (التحويل الرقمي ضروري هنا)
   const worker = await User.findOne({ id: Number(data.workerId) });
+  if (!worker) throw new Error("بيانات الموظف غير صحيحة");
 
-  if (!worker) {
-    throw new Error("بيانات الموظف غير صحيحة أو غير موجودة في النظام");
-  }
+  // ✅ الإصلاح: إذا أرسل الفرونت إند nextRun جاهز، نستخدمه فوراً
+  // وإلا نقوم بالحساب التلقائي (لضمان عدم ضياع القيمة المرسلة)
+  let finalNextRun = data.nextRun ? new Date(data.nextRun) : null;
 
-  let calculatedNextRun = null;
-
-  // 2. معالجة بيانات الجدولة والتكرار
-  if (data.isScheduled && data.frequencyDetails) {
+  if (data.isScheduled && !finalNextRun && data.frequencyDetails) {
     const { value, unit } = data.frequencyDetails;
     const amount = Number(value);
-    
-    // استخدام startDate المرسل أو الوقت الحالي كبداية
     let nextRunDate = new Date(data.startDate || Date.now());
 
-    // الحساب الدقيق للموعد القادم بناءً على الوحدة
-    if (unit === "hours") {
-      nextRunDate.setHours(nextRunDate.getHours() + amount);
-    } else if (unit === "days") {
-      nextRunDate.setDate(nextRunDate.getDate() + amount);
-    } else if (unit === "weeks") {
-      nextRunDate.setDate(nextRunDate.getDate() + (amount * 7));
-    } else if (unit === "months") {
-      nextRunDate.setMonth(nextRunDate.getMonth() + amount);
-    }
+    if (unit === "hours") nextRunDate.setHours(nextRunDate.getHours() + amount);
+    else if (unit === "days") nextRunDate.setDate(nextRunDate.getDate() + amount);
+    else if (unit === "weeks") nextRunDate.setDate(nextRunDate.getDate() + (amount * 7));
+    else if (unit === "months") nextRunDate.setMonth(nextRunDate.getMonth() + amount);
 
-    calculatedNextRun = nextRunDate.toISOString();
+    finalNextRun = nextRunDate;
   }
 
-  // 3. بناء كائن المهمة بشكل صريح (تجنب استخدام ...data مباشرة)
-  // هذا يضمن عدم تخزين workerId كنص وتجنب تعارض الـ Schema
   const taskData = {
     id: Math.floor(Date.now() / 1000),
     title: data.title,
@@ -63,20 +44,18 @@ const createTask = async (data) => {
     company: data.company,
     type: data.type,
     priority: data.priority,
-    status: data.status,
-    workerId: Number(data.workerId), // تحويل إجباري لرقم
+    status: data.status || "Pending",
+    workerId: Number(data.workerId),
     workerName: worker.name,
     workerJobTitle: worker.dept || "No Job Title",
     createdAt: new Date().toISOString(),
     isScheduled: Boolean(data.isScheduled),
     frequency: data.frequency || "none",
     frequencyDetails: data.frequencyDetails || null,
-    nextRun: calculatedNextRun,
-    // التأكد من أن startDate مخزن بصيغة ISO صالحة
+    nextRun: finalNextRun, // ✅ سيتم حفظ التاريخ المرسل (2026) هنا ولن يكون null
     startDate: data.startDate ? new Date(data.startDate).toISOString() : null
   };
 
-  // تنفيذ الحفظ في قاعدة البيانات
   return await Task.create(taskData);
 };
 /* =========================
@@ -280,19 +259,17 @@ const getScheduledTemplates = async () => {
     تحديث القالب المجدول مباشرة في قاعدة البيانات
 ===================================================== */
 const updateScheduledTask = async (taskId, data) => {
-  // إذا كان هناك موظف جديد، نحدث بياناته
   if (data.assignedTo) {
     const worker = await User.findOne({ id: Number(data.assignedTo) });
     if (worker) {
       data.workerId = worker.id;
       data.workerName = worker.name;
-      data.workerJobTitle = worker.dept;
     }
   }
 
-  // إذا تم تغيير التاريخ، نحدث nextRun
-  if (data.startDate) {
-    data.nextRun = new Date(data.startDate);
+  // ✅ نحدث الـ nextRun بالقيمة القادمة من الكنترولر (التي دمجنا فيها الساعة)
+  if (data.nextRun) {
+    data.nextRun = new Date(data.nextRun);
   }
 
   return await Task.findOneAndUpdate(
