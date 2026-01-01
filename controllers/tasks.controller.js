@@ -35,12 +35,16 @@ const createTask = async (req, res) => {
     res.status(500).json({ message: "Failed to create task" });
   }
 };
-/* =========================
-   GET ALL TASKS
-========================= */
 const getAllTasks = async (req, res) => {
   try {
-    const tasks = await tasksService.getAllTasks(req.user);
+    // استدعاء الخدمة لجلب المهام
+    let tasks = await tasksService.getAllTasks(req.user);
+
+    // الإصلاح هنا: تصفية المهام لاستبعاد القوالب المجدولة من القائمة العامة
+    if (Array.isArray(tasks)) {
+      tasks = tasks.filter(task => task.isScheduled !== true);
+    }
+
     res.json(tasks);
   } catch (err) {
     console.error(err);
@@ -345,29 +349,30 @@ const updateScheduledTask = async (req, res) => {
   try {
     const { title, frequency, assignedTo, startDate, executionTime } = req.body;
 
-    // تجهيز البيانات للتحديث
     let updateData = {
       title,
       frequency,
-      assignedTo, // ✅ حفظ الموظف المسؤول
-      executionTime // ✅ حفظ وقت التنفيذ (الساعة)
+      assignedTo,
+      executionTime 
     };
 
-    // إذا قام المدير بتغيير التاريخ، نقوم بتحديث موعد التنفيذ القادم
-    if (startDate) {
-      updateData.nextRun = new Date(startDate).toISOString();
+    // الإصلاح هنا: دمج التاريخ مع الساعة لضمان عدم حدوث تنفيذ فوري خاطئ
+    if (startDate && executionTime) {
+      const [hours, minutes] = executionTime.split(':');
+      const nextRunDate = new Date(startDate);
+      nextRunDate.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      
+      updateData.nextRun = nextRunDate; 
+      updateData.startDate = nextRunDate; 
     }
 
-    // التحديث يتم فقط إذا كانت المهمة هي "قالب مجدول"
     const updated = await Task.findOneAndUpdate(
       { id: taskId, isScheduled: true },
       { $set: updateData },
       { new: true }
     );
 
-    if (!updated) {
-      return res.status(404).json({ message: "Scheduled template not found" });
-    }
+    if (!updated) return res.status(404).json({ message: "Scheduled template not found" });
 
     res.json(updated);
   } catch (err) {
