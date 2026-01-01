@@ -9,29 +9,32 @@ const createTask = async (req, res) => {
   try {
     const task = await tasksService.createTask(req.body);
     
-    // 🛑 التعديل هنا: نرسل الإشعار فقط إذا لم تكن المهمة مجدولة
-    // إذا كانت (isScheduled) تساوي true، لن يدخل النظام لهذا الجزء
+    // ✅ نرسل الإشعار فقط للمهام الفورية المسندة لموظف
     if (task && task.workerId && !task.isScheduled) {
-      
-      // 1. حفظ الإشعار في العداد (Database Notification)
+      const taskUrl = `/tasks/view/${task.id}`;
+      const notificationTitle = "مهمة جديدة! 📋";
+      const notificationBody = `📌 المهمة: ${task.title}\n🏢 الشركة: ${task.company || 'غير محدد'}`;
+
+      // 1. إشعار قاعدة البيانات (للجرس الأحمر)
       await Notification.create({
         recipientId: task.workerId,
-        title: "مهمة جديدة! 📋",
-        body: `📌 المهمة: ${task.title}\n🏢 الشركة: ${task.company || 'غير محدد'}`,
-        url: `/tasks/view/${task.id}`
+        title: notificationTitle,
+        body: notificationBody,
+        url: taskUrl
       });
 
-      // 2. إرسال إشعار الـ Push للمتصفح
+      // 2. إشعار الـ Push المنبثق (الذي يظهر على اللابتوب)
+      // ملاحظة: تأكد أن ملف notifications.service.js يستخدم الـ URL لفتح تبويب جديد
       sendNotification(task.workerId, {
-        title: "مهمة جديدة! 📋",
-        body: `📌 المهمة: ${task.title}\n🏢 الشركة: ${task.company || 'غير محدد'}\n⏳ الأولوية: ${task.priority || 'عادية'}`,
-        url: `/tasks/view/${task.id}`
-      }).catch(err => console.error("Notification Error:", err)); 
+        title: notificationTitle,
+        body: notificationBody,
+        url: taskUrl
+      }).catch(err => console.error("⚠️ Push Notification Error:", err.message)); 
     }
 
     res.json(task);
   } catch (err) {
-    console.error(err);
+    console.error("❌ Controller Error (createTask):", err);
     res.status(500).json({ message: "Failed to create task" });
   }
 };
